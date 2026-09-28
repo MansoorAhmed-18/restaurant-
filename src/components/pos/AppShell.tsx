@@ -24,7 +24,7 @@ export function Logo() {
     <div className="flex items-center gap-2.5">
       <div className="grid size-10 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground shadow-[var(--shadow-lift)]">T</div>
       <div className="leading-tight">
-        <div className="font-extrabold text-foreground">Tadka POS</div>
+        <div className="font-extrabold text-foreground"></div>
         <div className="text-xs text-muted-foreground">Spice Route Kitchen</div>
       </div>
     </div>
