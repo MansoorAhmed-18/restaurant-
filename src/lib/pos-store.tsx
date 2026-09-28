@@ -9,7 +9,7 @@ interface Store {
   customerId?: string;
   setTableId: (id?: string) => void;
   setCustomerId: (id?: string) => void;
-  addCustomer: (c: { name: string; phone: string; email?: string }) => Customer;
+  addCustomer: (c: { name: string; email?: string }) => Customer;
   add: (p: Product) => void;
   setQty: (productId: string, qty: number) => void;
   clearCart: () => void;
@@ -39,14 +39,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
   const totals = useMemo(() => {
     const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const tax = round(subtotal * mock.TAX_RATE);
-    return { subtotal, tax, total: round(subtotal + tax), count: cart.reduce((s, i) => s + i.qty, 0) };
+    const tax = 0; // Tax removed
+    return { subtotal, tax, total: subtotal, count: cart.reduce((s, i) => s + i.qty, 0) };
   }, [cart]);
 
   const value: Store = {
     cart, tableId, setTableId, customerId, setCustomerId, totals, orders, tables, products, customers, setProducts, setTables,
     addCustomer: (newC) => {
-      const existing = customers.find((c) => c.phone === newC.phone);
+      const existing = customers.find((c) => c.name.toLowerCase() === newC.name.toLowerCase());
       if (existing) {
         setCustomerId(existing.id);
         return existing;
@@ -54,7 +54,6 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const newCust: Customer = {
         id: `u${Date.now()}`,
         name: newC.name,
-        phone: newC.phone,
         email: newC.email,
         visits: 1,
         totalSpent: 0,

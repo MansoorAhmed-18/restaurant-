@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { 
   Minus, Plus, Search, ShoppingCart, Trash2, Printer, 
-  CreditCard, QrCode, Banknote, CheckCircle2, X, User, UserPlus 
+  QrCode, Banknote, CheckCircle2, X, User, UserPlus 
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -30,7 +30,6 @@ export function Pos() {
   // Quick Customer Input Modal / Toggle State
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [custName, setCustName] = useState("");
-  const [custPhone, setCustPhone] = useState("");
 
   // Quick Pay Modal State
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -50,15 +49,14 @@ export function Pos() {
 
   const handleAddQuickCustomer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!custName || !custPhone) {
-      toast.error("Please enter both customer name and phone number.");
+    if (!custName) {
+      toast.error("Please enter customer name.");
       return;
     }
-    const newC = pos.addCustomer({ name: custName, phone: custPhone });
+    const newC = pos.addCustomer({ name: custName });
     toast.success(`Customer ${newC.name} saved & linked to bill!`);
     setShowAddCustomer(false);
     setCustName("");
-    setCustPhone("");
   };
 
   const handlePlaceOrder = (payNow: boolean) => {
@@ -195,7 +193,7 @@ export function Pos() {
           <div className="flex items-center justify-between border-b pb-3">
             <div>
               <h2 className="text-base font-black">Active Bill Receipt</h2>
-              <p className="text-xs text-muted-foreground">Order Items & GST breakdown</p>
+              <p className="text-xs text-muted-foreground">Order Items & Total Payable</p>
             </div>
             {pos.cart.length > 0 && (
               <button onClick={pos.clearCart} className="flex items-center gap-1 text-xs font-bold text-destructive hover:underline">
@@ -226,12 +224,6 @@ export function Pos() {
                   placeholder="Customer Name (e.g., Rajesh)" 
                   className="h-8 w-full rounded-lg border bg-card px-2 text-xs font-medium"
                 />
-                <input 
-                  value={custPhone} 
-                  onChange={(e) => setCustPhone(e.target.value)} 
-                  placeholder="Mobile (e.g., +91 98765 43210)" 
-                  className="h-8 w-full rounded-lg border bg-card px-2 text-xs font-medium"
-                />
                 <button type="submit" className="h-8 w-full rounded-lg bg-primary text-xs font-bold text-primary-foreground">
                   Save Customer & Link to Bill
                 </button>
@@ -245,7 +237,7 @@ export function Pos() {
                 <option value="">-- Guest / Walk-in Customer --</option>
                 {pos.customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone}) • {c.visits} Visits
+                    {c.name} • {c.visits} Visits
                   </option>
                 ))}
               </select>
@@ -299,11 +291,8 @@ export function Pos() {
                 ))}
               </ul>
 
-              {/* Tax & Total Summary */}
+              {/* Total Summary - GST removed */}
               <div className="space-y-1.5 border-t border-dashed pt-3 text-xs">
-                <div className="flex justify-between text-muted-foreground font-medium"><span>Subtotal (Gross)</span><span>{inr(pos.totals.subtotal)}</span></div>
-                <div className="flex justify-between text-muted-foreground font-medium"><span>CGST (2.5%)</span><span>{inr(pos.totals.tax / 2)}</span></div>
-                <div className="flex justify-between text-muted-foreground font-medium"><span>SGST (2.5%)</span><span>{inr(pos.totals.tax / 2)}</span></div>
                 <div className="flex justify-between border-t pt-2 text-sm font-black text-foreground"><span>Total Payable</span><span className="text-primary text-base">{inr(pos.totals.total)}</span></div>
               </div>
 
@@ -327,14 +316,14 @@ export function Pos() {
         </aside>
       </div>
 
-      {/* Quick Pay Modal */}
+      {/* Quick Pay Modal (Cash vs UPI ONLY) */}
       {payModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h3 className="font-extrabold text-lg">Collect Payment & Print Bill</h3>
-                <p className="text-xs text-muted-foreground">Select payment method to complete bill</p>
+                <p className="text-xs text-muted-foreground">Select Cash or UPI to complete bill</p>
               </div>
               <button onClick={() => setPayModalOpen(false)} className="rounded-lg p-1 text-muted-foreground hover:bg-muted"><X className="size-5" /></button>
             </div>
@@ -345,17 +334,16 @@ export function Pos() {
               <div className="text-3xl font-black text-primary mt-1">{inr(pos.totals.total)}</div>
               {selectedCustomer && (
                 <div className="text-xs font-bold text-emerald-600 mt-1">
-                  Customer: {selectedCustomer.name} ({selectedCustomer.phone})
+                  Customer: {selectedCustomer.name}
                 </div>
               )}
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Payment Method Selector (Cash vs UPI ONLY) */}
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { id: "upi", label: "UPI / QR", icon: QrCode },
-                { id: "cash", label: "Cash", icon: Banknote },
-                { id: "card", label: "Card", icon: CreditCard },
+                { id: "upi", label: "UPI / QR Code", icon: QrCode },
+                { id: "cash", label: "Cash Register", icon: Banknote },
               ].map((m) => {
                 const Icon = m.icon;
                 return (
@@ -363,13 +351,13 @@ export function Pos() {
                     key={m.id}
                     onClick={() => setSelectedMethod(m.id as PaymentMethod)}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-extrabold transition-all",
+                      "flex flex-col items-center gap-2 rounded-xl border p-4 text-xs font-extrabold transition-all",
                       selectedMethod === m.id
                         ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
                         : "bg-card text-muted-foreground hover:border-primary"
                     )}
                   >
-                    <Icon className="size-5" />
+                    <Icon className="size-6" />
                     <span>{m.label}</span>
                   </button>
                 );

@@ -1,6 +1,6 @@
 import type { Category, Customer, Order, Product, RestaurantTable } from "./types";
 
-export const TAX_RATE = 0.05;
+export const TAX_RATE = 0;
 
 export const categories: Category[] = [
   { id: "c1", name: "Starters", emoji: "🥟" },
@@ -40,12 +40,12 @@ export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
 });
 
 export const customers: Customer[] = [
-  { id: "u1", name: "Aarav Sharma", phone: "+91 98450 12345", email: "aarav@mail.com", visits: 14, totalSpent: 12840, lastVisit: "2026-09-24" },
-  { id: "u2", name: "Priya Nair", phone: "+91 99001 22334", email: "priya.n@mail.com", visits: 9, totalSpent: 7420, lastVisit: "2026-09-23" },
-  { id: "u3", name: "Rohan Gupta", phone: "+91 90080 55667", visits: 3, totalSpent: 2150, lastVisit: "2026-09-20" },
-  { id: "u4", name: "Ananya Iyer", phone: "+91 97411 88990", email: "ananya@mail.com", visits: 21, totalSpent: 19870, lastVisit: "2026-09-24" },
-  { id: "u5", name: "Kabir Mehta", phone: "+91 98860 44321", visits: 6, totalSpent: 4960, lastVisit: "2026-09-18" },
-  { id: "u6", name: "Sneha Reddy", phone: "+91 91234 56780", email: "sneha.r@mail.com", visits: 11, totalSpent: 9310, lastVisit: "2026-09-22" },
+  { id: "u1", name: "Aarav Sharma", email: "aarav@mail.com", visits: 14, totalSpent: 12840, lastVisit: "2026-09-24" },
+  { id: "u2", name: "Priya Nair", email: "priya.n@mail.com", visits: 9, totalSpent: 7420, lastVisit: "2026-09-23" },
+  { id: "u3", name: "Rohan Gupta", visits: 3, totalSpent: 2150, lastVisit: "2026-09-20" },
+  { id: "u4", name: "Ananya Iyer", email: "ananya@mail.com", visits: 21, totalSpent: 19870, lastVisit: "2026-09-24" },
+  { id: "u5", name: "Kabir Mehta", visits: 6, totalSpent: 4960, lastVisit: "2026-09-18" },
+  { id: "u6", name: "Sneha Reddy", email: "sneha.r@mail.com", visits: 11, totalSpent: 9310, lastVisit: "2026-09-22" },
 ];
 
 function mk(n: number, items: [string, number][], extra: Partial<Order>): Order {
@@ -54,9 +54,9 @@ function mk(n: number, items: [string, number][], extra: Partial<Order>): Order 
     return { productId: pid, name: p.name, price: p.price, qty };
   });
   const subtotal = its.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = Math.round(subtotal * TAX_RATE * 100) / 100;
+  const tax = 0;
   return {
-    id: `o${n}`, number: n, items: its, subtotal, tax, total: subtotal + tax,
+    id: `o${n}`, number: n, items: its, subtotal, tax, total: subtotal,
     status: "completed", paymentStatus: "paid", paymentMethod: "upi", type: "dine-in",
     createdAt: new Date(Date.now() - (1050 - n) * 6 * 60000).toISOString(), ...extra,
   };
@@ -68,11 +68,11 @@ export const orders: Order[] = [
   mk(1040, [["p2", 1], ["p5", 1]], { tableId: "t8", status: "pending", paymentStatus: "unpaid", paymentMethod: undefined }),
   mk(1039, [["p1", 1], ["p8", 1], ["p12", 4]], { tableId: "t10", customerId: "u2", status: "preparing", paymentStatus: "unpaid", paymentMethod: undefined }),
   mk(1038, [["p4", 1], ["p16", 2]], { customerId: "u3", type: "takeaway", paymentMethod: "cash" }),
-  mk(1037, [["p6", 2], ["p15", 2]], { customerId: "u6", paymentMethod: "card" }),
+  mk(1037, [["p6", 2], ["p15", 2]], { customerId: "u6", paymentMethod: "upi" }),
   mk(1036, [["p9", 1], ["p10", 2]], { status: "cancelled", paymentStatus: "refunded", paymentMethod: "upi" }),
   mk(1035, [["p7", 2], ["p11", 4], ["p17", 2]], { customerId: "u4" }),
   mk(1034, [["p3", 2], ["p13", 1]], { customerId: "u5", type: "takeaway", paymentMethod: "cash" }),
-  mk(1033, [["p2", 2], ["p14", 3]], { customerId: "u1", paymentMethod: "card" }),
+  mk(1033, [["p2", 2], ["p14", 3]], { customerId: "u1", paymentMethod: "upi" }),
 ];
 
 export const hourlySales = [
