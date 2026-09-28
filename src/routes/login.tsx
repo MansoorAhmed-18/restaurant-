@@ -68,7 +68,7 @@ export function Login() {
           <div className="flex items-center gap-3">
             <div className="grid size-12 place-items-center rounded-2xl bg-white text-primary text-xl font-black shadow-lg">T</div>
             <div className="leading-tight">
-              <div className="text-xl font-black"> Tan's Kitchen</div>
+              <div className="text-xl font-black">Tan&apos;s Kitchen</div>
               <div className="text-xs opacity-80">Spice Route Kitchen Systems</div>
             </div>
           </div>

@@ -29,7 +29,7 @@ function Invoice() {
       </div>
       <div className="card-surface mx-auto max-w-lg p-8 print:shadow-none">
         <div className="text-center">
-          <div className="text-2xl font-black text-primary">Tadka POS</div>
+          <div className="text-2xl font-black text-primary"> Tan's Kitchen</div>
           <div className="font-bold">Spice Route Kitchen</div>
           <div className="text-xs text-muted-foreground">12, 100 Ft Road, Indiranagar, Bengaluru 560038<br />GSTIN 29ABCDE1234F1Z5 · +91 80 4000 1234</div>
         </div>

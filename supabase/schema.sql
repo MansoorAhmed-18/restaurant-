@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 2. RESTAURANT SETTINGS & BILLING METADATA
 CREATE TABLE IF NOT EXISTS public.restaurant_info (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL DEFAULT ' Tan's Kitchen - Spice Route Kitchen',
+    name VARCHAR(255) NOT NULL DEFAULT 'Tan''s Kitchen - Spice Route Kitchen',
     address TEXT DEFAULT '123 MG Road, Indiranagar, Bengaluru, Karnataka 560038',
     phone VARCHAR(50) DEFAULT '+91 98765 43210',
     email VARCHAR(100) DEFAULT 'contact@spiceroute.com',
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.restaurant_info (
 
 -- Insert Default Restaurant Info if empty
 INSERT INTO public.restaurant_info (name, address, phone, email, gstin, tax_rate)
-SELECT ' Tan's Kitchen - Spice Route Kitchen', '123 MG Road, Indiranagar, Bengaluru, Karnataka 560038', '+91 98765 43210', 'billing@spiceroute.com', '29ABCDE1234F1Z5', 5.00
+SELECT 'Tan''s Kitchen - Spice Route Kitchen', '123 MG Road, Indiranagar, Bengaluru, Karnataka 560038', '+91 98765 43210', 'billing@spiceroute.com', '29ABCDE1234F1Z5', 5.00
 WHERE NOT EXISTS (SELECT 1 FROM public.restaurant_info);
 
 -- 3. CATEGORIES TABLE
