@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { 
   Minus, Plus, Search, ShoppingCart, Trash2, Printer, 
-  CreditCard, QrCode, Banknote, CheckCircle2, X 
+  CreditCard, QrCode, Banknote, CheckCircle2, X, User, UserPlus 
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -15,7 +15,7 @@ import { meta } from "@/lib/meta";
 import type { PaymentMethod } from "@/lib/types";
 
 export const Route = createFileRoute("/pos")({
-  head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders, thermal receipts & payments."),
+  head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders, customer details & thermal receipts."),
   component: Pos,
 });
 
@@ -26,6 +26,11 @@ export function Pos() {
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
+
+  // Quick Customer Input Modal / Toggle State
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
 
   // Quick Pay Modal State
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -42,6 +47,19 @@ export function Pos() {
   }, [pos.products, cat, q, vegOnly]);
 
   const qtyOf = (id: string) => pos.cart.find((c) => c.productId === id)?.qty ?? 0;
+
+  const handleAddQuickCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!custName || !custPhone) {
+      toast.error("Please enter both customer name and phone number.");
+      return;
+    }
+    const newC = pos.addCustomer({ name: custName, phone: custPhone });
+    toast.success(`Customer ${newC.name} saved & linked to bill!`);
+    setShowAddCustomer(false);
+    setCustName("");
+    setCustPhone("");
+  };
 
   const handlePlaceOrder = (payNow: boolean) => {
     if (pos.cart.length === 0) return;
@@ -66,11 +84,13 @@ export function Pos() {
   const cashGivenNum = parseFloat(cashTendered) || 0;
   const changeDue = Math.max(0, cashGivenNum - pos.totals.total);
 
+  const selectedCustomer = pos.customers.find((c) => c.id === pos.customerId);
+
   return (
     <AppShell>
       <PageHeader 
         title="POS Billing Terminal 🧾" 
-        subtitle="Select items, print thermal bill receipt & record daily collections." 
+        subtitle="Select items, collect customer details, print thermal bill & record collections." 
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
@@ -155,9 +175,9 @@ export function Pos() {
                             </button>
                           ) : (
                             <div className="flex h-8 w-20 items-center justify-between rounded-xl border bg-card text-emerald-600 shadow-sm">
-                              <button onClick={() => pos.setQty(p.id, qty - 1)} className="px-1.5" aria-label="Decrease"><Minus className="size-3.5" /></button>
+                              <button onClick={() => pos.setQty(p.id, qty - 1)} className="px-1.5" aria-label="Decrease"><Minus className="size-3" /></button>
                               <span className="text-xs font-black">{qty}</span>
-                              <button onClick={() => pos.add(p)} className="px-1.5" aria-label="Increase"><Plus className="size-3.5" /></button>
+                              <button onClick={() => pos.add(p)} className="px-1.5" aria-label="Increase"><Plus className="size-3" /></button>
                             </div>
                           )}
                         </div>
@@ -171,7 +191,7 @@ export function Pos() {
         </div>
 
         {/* Right Sidebar: Active Billing Order Summary */}
-        <aside className="card-surface flex h-fit flex-col p-5 xl:sticky xl:top-8 border-primary/20">
+        <aside className="card-surface flex h-fit flex-col p-5 xl:sticky xl:top-8 border-primary/20 space-y-4">
           <div className="flex items-center justify-between border-b pb-3">
             <div>
               <h2 className="text-base font-black">Active Bill Receipt</h2>
@@ -184,7 +204,62 @@ export function Pos() {
             )}
           </div>
 
-          <div className="mt-3">
+          {/* Customer Selection & Quick Add */}
+          <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-muted-foreground uppercase flex items-center gap-1">
+                <User className="size-3.5 text-primary" /> Customer Info
+              </span>
+              <button 
+                onClick={() => setShowAddCustomer(!showAddCustomer)} 
+                className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline"
+              >
+                <UserPlus className="size-3" /> {showAddCustomer ? "Cancel" : "+ New Customer"}
+              </button>
+            </div>
+
+            {showAddCustomer ? (
+              <form onSubmit={handleAddQuickCustomer} className="space-y-2 pt-1 border-t">
+                <input 
+                  value={custName} 
+                  onChange={(e) => setCustName(e.target.value)} 
+                  placeholder="Customer Name (e.g., Rajesh)" 
+                  className="h-8 w-full rounded-lg border bg-card px-2 text-xs font-medium"
+                />
+                <input 
+                  value={custPhone} 
+                  onChange={(e) => setCustPhone(e.target.value)} 
+                  placeholder="Mobile (e.g., +91 98765 43210)" 
+                  className="h-8 w-full rounded-lg border bg-card px-2 text-xs font-medium"
+                />
+                <button type="submit" className="h-8 w-full rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+                  Save Customer & Link to Bill
+                </button>
+              </form>
+            ) : (
+              <select 
+                value={pos.customerId ?? ""} 
+                onChange={(e) => pos.setCustomerId(e.target.value || undefined)} 
+                className="h-9 w-full rounded-lg border bg-card px-2 text-xs font-bold shadow-sm"
+              >
+                <option value="">-- Guest / Walk-in Customer --</option>
+                {pos.customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.phone}) • {c.visits} Visits
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {selectedCustomer && !showAddCustomer && (
+              <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 pt-1">
+                <CheckCircle2 className="size-3" /> Linked to {selectedCustomer.name} ({selectedCustomer.visits} visits, {inr(selectedCustomer.totalSpent)} spent)
+              </div>
+            )}
+          </div>
+
+          {/* Order Type / Table */}
+          <div>
             <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">Select Order Type / Table</label>
             <select 
               value={pos.tableId ?? ""} 
@@ -199,7 +274,7 @@ export function Pos() {
           </div>
 
           {pos.cart.length === 0 ? (
-            <div className="py-12 text-center">
+            <div className="py-10 text-center">
               <ShoppingCart className="mx-auto size-12 text-muted-foreground/50" />
               <div className="mt-3 font-extrabold text-sm">Cart is empty</div>
               <p className="text-xs text-muted-foreground mt-1">Tap dishes on the menu to build the bill</p>
@@ -207,7 +282,7 @@ export function Pos() {
           ) : (
             <>
               {/* Items List */}
-              <ul className="mt-4 max-h-[35vh] space-y-3 overflow-y-auto pr-1">
+              <ul className="max-h-[30vh] space-y-3 overflow-y-auto pr-1">
                 {pos.cart.map((i) => (
                   <li key={i.productId} className="flex items-center gap-2 border-b border-dashed pb-2">
                     <div className="min-w-0 flex-1">
@@ -225,7 +300,7 @@ export function Pos() {
               </ul>
 
               {/* Tax & Total Summary */}
-              <div className="mt-4 space-y-1.5 border-t border-dashed pt-3 text-xs">
+              <div className="space-y-1.5 border-t border-dashed pt-3 text-xs">
                 <div className="flex justify-between text-muted-foreground font-medium"><span>Subtotal (Gross)</span><span>{inr(pos.totals.subtotal)}</span></div>
                 <div className="flex justify-between text-muted-foreground font-medium"><span>CGST (2.5%)</span><span>{inr(pos.totals.tax / 2)}</span></div>
                 <div className="flex justify-between text-muted-foreground font-medium"><span>SGST (2.5%)</span><span>{inr(pos.totals.tax / 2)}</span></div>
@@ -233,7 +308,7 @@ export function Pos() {
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-2">
                 <button 
                   onClick={() => handlePlaceOrder(false)} 
                   className="h-11 rounded-xl border-2 border-primary text-xs font-extrabold text-primary hover:bg-primary/5 transition-colors"
@@ -268,6 +343,11 @@ export function Pos() {
             <div className="rounded-2xl bg-primary/10 p-4 text-center">
               <div className="text-xs font-bold text-muted-foreground uppercase">Total Bill Amount</div>
               <div className="text-3xl font-black text-primary mt-1">{inr(pos.totals.total)}</div>
+              {selectedCustomer && (
+                <div className="text-xs font-bold text-emerald-600 mt-1">
+                  Customer: {selectedCustomer.name} ({selectedCustomer.phone})
+                </div>
+              )}
             </div>
 
             {/* Payment Method Selector */}

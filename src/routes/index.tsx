@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -15,6 +15,7 @@ import { api, inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
+import { getActiveStaff, type StaffUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Billing Dashboard", "Live restaurant collection, POS billing terminal & daily sales metrics."),
@@ -25,6 +26,18 @@ function Dashboard() {
   const { orders, products } = usePos();
   const sales = useQuery({ queryKey: ["hourly"], queryFn: api.getHourlySales });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
+
+  useEffect(() => {
+    setStaff(getActiveStaff());
+  }, []);
+
+  const getTimeGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return "Good morning";
+    if (hr < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
   // Paid orders calculation
   const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
@@ -63,8 +76,8 @@ function Dashboard() {
   return (
     <AppShell>
       <PageHeader 
-        title="Restaurant Billing & Collection Center 🍽️" 
-        subtitle="Live daily collection counters, GST summary & POS order terminal."
+        title={`${getTimeGreeting()}, ${staff.name.split(" ")[0]} 👋`} 
+        subtitle={`Logged in as ${staff.role} • Here's what's cooking at Spice Route today.`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button

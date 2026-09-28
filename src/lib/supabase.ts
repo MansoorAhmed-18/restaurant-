@@ -40,6 +40,34 @@ export async function fetchTodayEarningsFromSupabase() {
 }
 
 /**
+ * Sync customer details to Supabase database
+ */
+export async function syncCustomerToSupabase(customer: any) {
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase.from("customers").upsert({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email || null,
+      visits: customer.visits || 1,
+      total_spent: customer.totalSpent || 0,
+      last_visit: customer.lastVisit || new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error("Failed to sync customer to Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Supabase customer sync error:", err);
+    return false;
+  }
+}
+
+/**
  * Sync a newly completed billing order directly into Supabase
  */
 export async function syncOrderToSupabase(order: any) {

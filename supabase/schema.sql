@@ -185,6 +185,37 @@ FROM public.orders
 WHERE payment_status = 'paid'
 GROUP BY order_type;
 
+-- View 7: Power BI Customer VIP & Spending Analytics
+CREATE OR REPLACE VIEW public.v_powerbi_customer_analytics AS
+SELECT 
+    c.id AS customer_id,
+    c.name AS customer_name,
+    c.phone AS customer_phone,
+    c.visits AS total_visits,
+    c.total_spent AS lifetime_spent,
+    c.last_visit,
+    COUNT(o.id) AS total_paid_orders
+FROM public.customers c
+LEFT JOIN public.orders o ON o.customer_id = c.id AND o.payment_status = 'paid'
+GROUP BY c.id, c.name, c.phone, c.visits, c.total_spent, c.last_visit
+ORDER BY c.total_spent DESC;
+
+-- View 8: Power BI Monthly Revenue & Sales Trends
+CREATE OR REPLACE VIEW public.v_powerbi_monthly_earnings AS
+SELECT 
+    EXTRACT(YEAR FROM created_at) AS sales_year,
+    EXTRACT(MONTH FROM created_at) AS month_number,
+    TO_CHAR(created_at, 'Month YYYY') AS month_year_formatted,
+    COUNT(id) AS total_orders,
+    COALESCE(SUM(subtotal), 0) AS gross_sales,
+    COALESCE(SUM(tax), 0) AS total_tax,
+    COALESCE(SUM(total), 0) AS total_monthly_revenue,
+    COALESCE(AVG(total), 0) AS avg_order_value
+FROM public.orders
+WHERE payment_status = 'paid'
+GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at), TO_CHAR(created_at, 'Month YYYY')
+ORDER BY sales_year DESC, month_number DESC;
+
 -- Row Level Security (RLS) policies - enable public access for anon key (can be customized)
 ALTER TABLE public.restaurant_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;

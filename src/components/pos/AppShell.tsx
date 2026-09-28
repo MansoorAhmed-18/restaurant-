@@ -1,7 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { BarChart3, ClipboardList, CreditCard, Database, LayoutDashboard, LogOut, Menu, ShoppingBag, UtensilsCrossed, Users, Armchair, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { 
+  BarChart3, ClipboardList, CreditCard, Database, 
+  LayoutDashboard, LogOut, Menu, ShoppingBag, UtensilsCrossed, 
+  Users, Armchair, X 
+} from "lucide-react";
+import { getActiveStaff, getStaffInitials, type StaffUser } from "@/lib/auth";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -20,7 +24,7 @@ export function Logo() {
     <div className="flex items-center gap-2.5">
       <div className="grid size-10 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground shadow-[var(--shadow-lift)]">T</div>
       <div className="leading-tight">
-        <div className="font-extrabold">Tadka POS</div>
+        <div className="font-extrabold text-foreground">Tadka POS</div>
         <div className="text-xs text-muted-foreground">Spice Route Kitchen</div>
       </div>
     </div>
@@ -29,25 +33,46 @@ export function Logo() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
+
+  useEffect(() => {
+    setStaff(getActiveStaff());
+  }, []);
+
   const side = (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar p-4">
       <div className="px-2 py-2"><Logo /></div>
       <nav className="mt-6 flex flex-1 flex-col gap-1">
         {nav.map(({ to, label, icon: Icon }) => (
-          <Link key={to} to={to} onClick={() => setOpen(false)} activeOptions={{ exact: to === "/" }}
+          <Link 
+            key={to} 
+            to={to} 
+            onClick={() => setOpen(false)} 
+            activeOptions={{ exact: to === "/" }}
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            activeProps={{ className: "!bg-sidebar-accent !text-sidebar-accent-foreground" }}>
+            activeProps={{ className: "!bg-sidebar-accent !text-sidebar-accent-foreground" }}
+          >
             <Icon className="size-5" />{label}
           </Link>
         ))}
       </nav>
+
+      {/* Dynamic Logged-in Staff Profile */}
       <div className="flex items-center gap-3 rounded-xl bg-muted p-3">
-        <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">RK</div>
-        <div className="min-w-0 flex-1 text-sm"><div className="font-bold">Ravi Kumar</div><div className="text-xs text-muted-foreground">Manager</div></div>
-        <Link to="/login" aria-label="Log out" className="text-muted-foreground hover:text-destructive"><LogOut className="size-4" /></Link>
+        <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-black text-primary-foreground uppercase shadow-sm">
+          {getStaffInitials(staff.name)}
+        </div>
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="font-bold truncate text-foreground">{staff.name}</div>
+          <div className="text-xs text-muted-foreground font-medium">{staff.role}</div>
+        </div>
+        <Link to="/login" aria-label="Log out" title="Log out / Switch Staff" className="text-muted-foreground hover:text-destructive transition-colors">
+          <LogOut className="size-4" />
+        </Link>
       </div>
     </aside>
   );
+
   return (
     <div className="flex min-h-screen">
       <div className="no-print sticky top-0 hidden h-screen lg:block">{side}</div>
