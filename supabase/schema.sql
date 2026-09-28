@@ -164,14 +164,14 @@ WHERE o.payment_status = 'paid'
 GROUP BY oi.name, p.emoji, c.name, p.price
 ORDER BY total_quantity_sold DESC;
 
--- View 5: Power BI Payment Method Summary (Cash vs Card vs UPI)
+-- View 5: Power BI Payment Method Summary (Cash vs UPI - Card excluded)
 CREATE OR REPLACE VIEW public.v_powerbi_payment_summary AS
 SELECT 
     COALESCE(payment_method, 'unassigned') AS payment_method,
     COUNT(id) AS transaction_count,
     COALESCE(SUM(total), 0) AS total_collected
 FROM public.orders
-WHERE payment_status = 'paid'
+WHERE payment_status = 'paid' AND payment_method IN ('cash', 'upi')
 GROUP BY payment_method;
 
 -- View 6: Power BI Dine-In vs Takeaway Comparison

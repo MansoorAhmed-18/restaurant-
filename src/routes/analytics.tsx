@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { 
-  BarChart3, IndianRupee, QrCode, Banknote, CreditCard, 
-  ArrowUpRight, Download, Calendar, ShieldCheck, CheckCircle2 
+  BarChart3, IndianRupee, QrCode, Banknote, 
+  ArrowUpRight, Calendar, CheckCircle2 
 } from "lucide-react";
 import { AppShell } from "@/components/pos/AppShell";
-import { PageHeader, StatusBadge } from "@/components/pos/ui";
+import { PageHeader } from "@/components/pos/ui";
 import { meta } from "@/lib/meta";
 import { usePos } from "@/lib/pos-store";
 import { inr } from "@/lib/api";
@@ -25,7 +25,6 @@ function Analytics() {
 
   const cashCollection = paidOrders.filter((o) => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
   const upiCollection = paidOrders.filter((o) => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
-  const cardCollection = paidOrders.filter((o) => o.paymentMethod === "card").reduce((s, o) => s + o.total, 0);
 
   return (
     <AppShell>
@@ -90,44 +89,34 @@ function Analytics() {
         </div>
       </div>
 
-      {/* Payment Split Detail Grid */}
+      {/* Payment Split Detail Grid (Cash vs UPI) */}
       <div className="mt-6 card-surface p-5">
-        <h3 className="font-extrabold text-base mb-4">Payment Method Breakdown</h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border bg-emerald-500/5 p-4 border-emerald-500/20 flex items-center justify-between">
+        <h3 className="font-extrabold text-base mb-4">Cash vs UPI Collection Breakdown</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border bg-emerald-500/5 p-5 border-emerald-500/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600">
-                <QrCode className="size-5" />
+              <div className="grid size-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+                <QrCode className="size-6" />
               </div>
               <div>
-                <div className="text-xs font-extrabold text-muted-foreground">UPI / QR Code</div>
-                <div className="text-xl font-black text-emerald-600">{inr(upiCollection)}</div>
+                <div className="text-xs font-extrabold text-muted-foreground uppercase">UPI / QR Code</div>
+                <div className="text-2xl font-black text-emerald-600">{inr(upiCollection)}</div>
               </div>
             </div>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-500/10 px-2.5 py-1 rounded-xl">GPay / PhonePe</span>
           </div>
 
-          <div className="rounded-xl border bg-blue-500/5 p-4 border-blue-500/20 flex items-center justify-between">
+          <div className="rounded-2xl border bg-blue-500/5 p-5 border-blue-500/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-blue-500/15 text-blue-600">
-                <Banknote className="size-5" />
+              <div className="grid size-12 place-items-center rounded-2xl bg-blue-500/15 text-blue-600">
+                <Banknote className="size-6" />
               </div>
               <div>
-                <div className="text-xs font-extrabold text-muted-foreground">Cash Register</div>
-                <div className="text-xl font-black text-blue-600">{inr(cashCollection)}</div>
+                <div className="text-xs font-extrabold text-muted-foreground uppercase">Cash Register</div>
+                <div className="text-2xl font-black text-blue-600">{inr(cashCollection)}</div>
               </div>
             </div>
-          </div>
-
-          <div className="rounded-xl border bg-purple-500/5 p-4 border-purple-500/20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-purple-500/15 text-purple-600">
-                <CreditCard className="size-5" />
-              </div>
-              <div>
-                <div className="text-xs font-extrabold text-muted-foreground">Card Machine</div>
-                <div className="text-xl font-black text-purple-600">{inr(cardCollection)}</div>
-              </div>
-            </div>
+            <span className="text-xs font-bold text-blue-700 bg-blue-500/10 px-2.5 py-1 rounded-xl">Physical Cash</span>
           </div>
         </div>
       </div>

@@ -3,10 +3,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { 
   IndianRupee, ReceiptText, Clock, TrendingUp, RefreshCw, 
-  CreditCard, QrCode, Banknote, ShieldCheck, Plus, ShoppingBag, 
-  Printer, ArrowUpRight, Flame, Layers
+  QrCode, Banknote, ShieldCheck, Plus, ShoppingBag, 
+  ArrowUpRight, Flame, Layers, PieChart as PieIcon
 } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { 
+  Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, 
+  PieChart, Pie, Cell, Legend 
+} from "recharts";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { PageHeader, StatusBadge, ErrorState } from "@/components/pos/ui";
@@ -21,6 +24,8 @@ export const Route = createFileRoute("/")({
   head: () => meta("Billing Dashboard", "Live restaurant collection, POS billing terminal & daily sales metrics."),
   component: Dashboard,
 });
+
+const PIE_COLORS = ["#10b981", "#3b82f6"]; // Emerald for UPI, Blue for Cash
 
 function Dashboard() {
   const { orders, products } = usePos();
@@ -48,10 +53,14 @@ function Dashboard() {
 
   const cashCollection = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
   const upiCollection = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
-  const cardCollection = paidOrders.filter(o => o.paymentMethod === "card").reduce((s, o) => s + o.total, 0);
 
   const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "preparing");
   const topDishes = [...products].sort((a, b) => (b.soldToday ?? 0) - (a.soldToday ?? 0)).slice(0, 5);
+
+  const pieData = [
+    { name: "UPI / QR Code", value: upiCollection },
+    { name: "Cash Register", value: cashCollection },
+  ].filter(d => d.value > 0);
 
   const handleRefreshCollection = async () => {
     setIsRefreshing(true);
@@ -180,56 +189,73 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Payment Method Collection Split Bar */}
-      <div className="mt-6 card-surface p-5">
-        <h3 className="text-sm font-extrabold text-muted-foreground uppercase tracking-wider mb-4 flex items-center justify-between">
-          <span>Today&apos;s Collection Breakdown by Payment Mode</span>
-          <span className="text-xs text-foreground font-bold font-mono">Net: {inr(netCollection)}</span>
-        </h3>
+      {/* Cash vs UPI Collection Breakdown & Pie Chart */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="card-surface p-5 lg:col-span-2">
+          <h3 className="text-sm font-extrabold text-muted-foreground uppercase tracking-wider mb-4 flex items-center justify-between">
+            <span>Cash vs UPI Today Collection</span>
+            <span className="text-xs text-foreground font-bold font-mono">Cash + UPI Total: {inr(cashCollection + upiCollection)}</span>
+          </h3>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="flex items-center justify-between rounded-xl border bg-emerald-500/5 p-4 border-emerald-500/20">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 font-bold">
-                <QrCode className="size-5" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-2xl border bg-emerald-500/5 p-5 border-emerald-500/20">
+              <div className="flex items-center gap-3">
+                <div className="grid size-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 font-bold">
+                  <QrCode className="size-6" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-muted-foreground uppercase">UPI / QR Code</div>
+                  <div className="text-2xl font-black text-emerald-600">{inr(upiCollection)}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-xs font-extrabold text-muted-foreground">UPI Collection</div>
-                <div className="text-lg font-black text-emerald-600">{inr(upiCollection)}</div>
-              </div>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-500/10 px-2.5 py-1 rounded-xl">GPay / PhonePe</span>
             </div>
-            <span className="text-xs font-bold text-muted-foreground bg-emerald-500/10 px-2 py-1 rounded-lg">GPay / PhonePe</span>
+
+            <div className="flex items-center justify-between rounded-2xl border bg-blue-500/5 p-5 border-blue-500/20">
+              <div className="flex items-center gap-3">
+                <div className="grid size-12 place-items-center rounded-2xl bg-blue-500/15 text-blue-600 font-bold">
+                  <Banknote className="size-6" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-muted-foreground uppercase">Cash Register</div>
+                  <div className="text-2xl font-black text-blue-600">{inr(cashCollection)}</div>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-blue-700 bg-blue-500/10 px-2.5 py-1 rounded-xl">Physical Cash</span>
+            </div>
           </div>
+        </div>
 
-          <div className="flex items-center justify-between rounded-xl border bg-blue-500/5 p-4 border-blue-500/20">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-blue-500/15 text-blue-600 font-bold">
-                <Banknote className="size-5" />
-              </div>
-              <div>
-                <div className="text-xs font-extrabold text-muted-foreground">Cash Collection</div>
-                <div className="text-lg font-black text-blue-600">{inr(cashCollection)}</div>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-muted-foreground bg-blue-500/10 px-2 py-1 rounded-lg">Register Cash</span>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border bg-purple-500/5 p-4 border-purple-500/20">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-purple-500/15 text-purple-600 font-bold">
-                <CreditCard className="size-5" />
-              </div>
-              <div>
-                <div className="text-xs font-extrabold text-muted-foreground">Card Collection</div>
-                <div className="text-lg font-black text-purple-600">{inr(cardCollection)}</div>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-muted-foreground bg-purple-500/10 px-2 py-1 rounded-lg">POS Machine</span>
+        {/* Cash vs UPI Pie Chart Visual */}
+        <div className="card-surface p-5">
+          <h3 className="text-sm font-extrabold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+            <PieIcon className="size-4 text-emerald-600" /> Cash vs UPI Pie Chart
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData.length > 0 ? pieData : [{ name: "UPI / Cash", value: 1 }]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={35}
+                  outerRadius={65}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {pieData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => inr(value)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Hourly Sales Chart & Top Selling Dishes */}
+      {/* Hourly Sales Chart & Today's Best Selling Dishes */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="card-surface p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
@@ -257,7 +283,7 @@ function Dashboard() {
 
         <div className="card-surface p-5">
           <h2 className="font-extrabold text-base flex items-center gap-2">
-            <Flame className="size-4 text-amber-500" /> Today&apos;s Top Dishes
+            <Flame className="size-4 text-amber-500" /> Best Selling Food Today 🥇
           </h2>
           <ul className="mt-4 space-y-3">
             {topDishes.map((p, i) => (
