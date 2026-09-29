@@ -20,6 +20,7 @@ import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
 import { getActiveStaff, type StaffUser } from "@/lib/auth";
+import { PowerBiDashboardView } from "@/components/pos/PowerBiDashboardView";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Billing Dashboard", "Live restaurant collection, POS billing terminal & daily sales metrics."),
@@ -55,6 +56,7 @@ export function Dashboard() {
   const categories = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"powerbi" | "standard">("powerbi");
   const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
 
   useEffect(() => {
@@ -177,7 +179,7 @@ export function Dashboard() {
       />
 
       {/* Database Connection & Daily Status Pill */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="relative grid size-3 place-items-center">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -201,7 +203,41 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* 1. REQUIRED KPI CARDS */}
+      {/* Dashboard Mode Selector: Power BI vs Standard POS */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-gradient-to-r from-card to-muted/40 p-2 shadow-sm">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode("powerbi")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
+              viewMode === "powerbi"
+                ? "bg-[#252423] text-[#F2C811] shadow-md border border-[#F2C811]/30"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Zap className="size-4 text-[#F2C811]" /> Power BI Dashboard View 🟡
+          </button>
+          <button
+            onClick={() => setViewMode("standard")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
+              viewMode === "standard"
+                ? "bg-primary text-primary-foreground shadow-md"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <BarChart2 className="size-4" /> Standard Billing View
+          </button>
+        </div>
+
+        <Link to="/powerbi" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pr-2">
+          Power BI Integration Hub <ChevronRight className="size-3.5" />
+        </Link>
+      </div>
+
+      {/* RENDER POWER BI DASHBOARD OR STANDARD DASHBOARD */}
+      {viewMode === "powerbi" ? (
+        <PowerBiDashboardView />
+      ) : (
+        <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Today Sales + % change vs yesterday */}
         <div className="card-surface p-5 border-l-4 border-l-primary relative overflow-hidden">
@@ -628,6 +664,8 @@ export function Dashboard() {
           ))}
         </div>
       </div>
+      </>
+      )}
     </AppShell>
   );
 }

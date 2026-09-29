@@ -8,6 +8,7 @@ import { AppShell } from "@/components/pos/AppShell";
 import { PageHeader } from "@/components/pos/ui";
 import { meta } from "@/lib/meta";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { PowerBiDashboardView } from "@/components/pos/PowerBiDashboardView";
 
 export const Route = createFileRoute("/powerbi")({
   head: () => meta("Power BI & Supabase Integration", "Connect Power BI desktop with Supabase database to track live restaurant revenue and analytics."),
@@ -44,9 +45,14 @@ export function PowerBiIntegration() {
   return (
     <AppShell>
       <PageHeader 
-        title="Power BI & Supabase Backend Integration 📊" 
-        subtitle="Connect Power BI directly to your Supabase PostgreSQL database to analyze today's earnings and restaurant metrics in real-time."
+        title="Power BI Embedded Dashboard Hub 📊" 
+        subtitle="Live Power BI report visuals, PostgreSQL analytical views, and desktop integration for restaurantbi.pbix."
       />
+
+      {/* Main Power BI Embedded Dashboard */}
+      <div className="mb-8">
+        <PowerBiDashboardView />
+      </div>
 
       {/* Integration Status Banner */}
       <div className="mb-8 rounded-2xl border bg-card p-5 shadow-sm">

@@ -9,6 +9,7 @@ import { meta } from "@/lib/meta";
 import { usePos } from "@/lib/pos-store";
 import { inr } from "@/lib/api";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { PowerBiDashboardView } from "@/components/pos/PowerBiDashboardView";
 
 export const Route = createFileRoute("/analytics")({
   head: () => meta("Daily Analytics & Collection Reports", "Live daily collection breakdown, GST tax summary & Power BI integration."),
@@ -66,6 +67,11 @@ function Analytics() {
             </span>
           )}
         </div>
+      </div>
+
+      {/* Power BI Interactive Report Component */}
+      <div className="mb-8">
+        <PowerBiDashboardView />
       </div>
 
       {/* Top 3 Summary Cards */}
