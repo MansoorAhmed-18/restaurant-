@@ -501,7 +501,7 @@ export function Dashboard() {
                     style={{ width: `${Math.min(100, Math.round((cat.revenue / (todaySales || 1)) * 100))}%` }}
                   ></div>
                 </div>
-                <div className="text-[10px] text-muted-foreground text-right">{cat.itemsItemsSold ?? cat.itemsSold} items sold</div>
+                <div className="text-[10px] text-muted-foreground text-right">{cat.itemsSold ?? cat.itemsSold} items sold</div>
               </div>
             ))}
           </div>

@@ -116,3 +116,45 @@ export async function syncOrderToSupabase(order: any) {
     return false;
   }
 }
+
+/**
+ * Fetch all billing orders from Supabase database to hydrate state on load/refresh
+ */
+export async function fetchOrdersFromSupabase() {
+  if (!supabase) return null;
+  try {
+    const { data: ordersData, error: ordersError } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
+
+    if (ordersError || !ordersData) {
+      console.error("Error fetching orders from Supabase:", ordersError);
+      return null;
+    }
+
+    return ordersData.map((o: any) => ({
+      id: o.id,
+      number: o.number,
+      tableId: o.table_id || undefined,
+      customerId: o.customer_id || undefined,
+      subtotal: Number(o.subtotal || 0),
+      tax: Number(o.tax || 0),
+      total: Number(o.total || 0),
+      status: o.status || "pending",
+      paymentStatus: o.payment_status || "unpaid",
+      paymentMethod: o.payment_method || undefined,
+      type: o.order_type || (o.table_id ? "dine-in" : "takeaway"),
+      createdAt: o.created_at || new Date().toISOString(),
+      items: (o.order_items || []).map((item: any) => ({
+        productId: item.product_id || "",
+        name: item.name || "Item",
+        price: Number(item.price || 0),
+        qty: Number(item.qty || 1),
+      })),
+    }));
+  } catch (err) {
+    console.error("Fetch orders exception:", err);
+    return null;
+  }
+}

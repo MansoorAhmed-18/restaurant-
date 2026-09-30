@@ -1,6 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock-data";
-import { syncOrderToSupabase, syncCustomerToSupabase } from "./supabase";
+import { syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, isSupabaseConfigured } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 
 interface Store {
@@ -26,20 +26,84 @@ interface Store {
 }
 
 const Ctx = createContext<Store | null>(null);
-const round = (n: number) => Math.round(n * 100) / 100;
+
+// Helper for initial localStorage loading
+const loadStored = <T,>(key: string, fallback: T): T => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export function PosProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [tableId, setTableId] = useState<string | undefined>();
   const [customerId, setCustomerId] = useState<string | undefined>();
-  const [orders, setOrders] = useState<Order[]>(mock.orders);
-  const [tables, setTables] = useState<RestaurantTable[]>(mock.tables);
-  const [products, setProducts] = useState<Product[]>(mock.products);
-  const [customers, setCustomers] = useState<Customer[]>(mock.customers);
+
+  // Hydrate state from localStorage or mock defaults
+  const [orders, setOrders] = useState<Order[]>(() => loadStored("res_pos_orders", mock.orders));
+  const [tables, setTables] = useState<RestaurantTable[]>(() => loadStored("res_pos_tables", mock.tables));
+  const [products, setProducts] = useState<Product[]>(() => loadStored("res_pos_products", mock.products));
+  const [customers, setCustomers] = useState<Customer[]>(() => loadStored("res_pos_customers", mock.customers));
+
+  // Sync state changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("res_pos_orders", JSON.stringify(orders));
+    } catch (e) {
+      console.error("Failed to save orders to localStorage:", e);
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("res_pos_tables", JSON.stringify(tables));
+    } catch (e) {
+      console.error("Failed to save tables to localStorage:", e);
+    }
+  }, [tables]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("res_pos_customers", JSON.stringify(customers));
+    } catch (e) {
+      console.error("Failed to save customers to localStorage:", e);
+    }
+  }, [customers]);
+
+  // Fetch live orders from Supabase PostgreSQL on app load / refresh
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+    fetchOrdersFromSupabase().then((remoteOrders) => {
+      if (isMounted && remoteOrders && remoteOrders.length > 0) {
+        setOrders((localOrders) => {
+          const map = new Map<string, Order>();
+          // Remote orders take precedence
+          remoteOrders.forEach((ro: Order) => map.set(ro.id, ro));
+          // Preserve local orders not yet in remote
+          localOrders.forEach((lo) => {
+            if (!map.has(lo.id)) map.set(lo.id, lo);
+          });
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const totals = useMemo(() => {
     const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const tax = 0; // Tax removed
+    const tax = 0; // Tax removed from subtotal
     return { subtotal, tax, total: subtotal, count: cart.reduce((s, i) => s + i.qty, 0) };
   }, [cart]);
 

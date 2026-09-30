@@ -26,7 +26,7 @@ export function PowerBiIntegration() {
   };
 
   const connectionDetails = [
-    { label: "Server / Host", value: "db.[YOUR-SUPABASE-PROJECT-REF].supabase.co", key: "host" },
+    { label: "Server / Host", value: "db.gxwarlojidcebchmxkpz.supabase.co", key: "host" },
     { label: "Port", value: "5432 (Direct) or 6543 (Pooler)", key: "port" },
     { label: "Database Name", value: "postgres", key: "dbname" },
     { label: "User", value: "postgres", key: "user" },
@@ -240,7 +240,7 @@ export function PowerBiIntegration() {
               <div>
                 <h4 className="font-extrabold text-base">Enter Server & Database Name</h4>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Enter Server: <code className="bg-muted px-1.5 py-0.5 rounded font-bold text-foreground">db.[PROJECT-REF].supabase.co</code> and Database: <code className="bg-muted px-1.5 py-0.5 rounded font-bold text-foreground">postgres</code>. Select Data Connectivity mode: <strong>DirectQuery</strong>.
+                  Enter Server: <code className="bg-muted px-1.5 py-0.5 rounded font-bold text-foreground">db.gxwarlojidcebchmxkpz.supabase.co</code> and Database: <code className="bg-muted px-1.5 py-0.5 rounded font-bold text-foreground">postgres</code>. Select Data Connectivity mode: <strong>DirectQuery</strong>.
                 </p>
               </div>
             </div>
