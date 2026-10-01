@@ -155,6 +155,22 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
   const [paymentSlicer, setPaymentSlicer] = useState<"all" | "upi" | "cash">("all");
   const [searchFilter, setSearchFilter] = useState("");
 
+  // Power BI Interactive Canvas Cross-Filtering State (Chart-to-Chart filtering)
+  const [crossPayment, setCrossPayment] = useState<"upi" | "cash" | null>(null);
+  const [crossHour, setCrossHour] = useState<string | null>(null);
+  const [crossDate, setCrossDate] = useState<string | null>(null);
+  const [crossDish, setCrossDish] = useState<string | null>(null);
+
+  const isCrossFiltered = Boolean(crossPayment || crossHour || crossDate || crossDish);
+
+  const clearCrossFilters = () => {
+    setCrossPayment(null);
+    setCrossHour(null);
+    setCrossDate(null);
+    setCrossDish(null);
+    toast.success("All Power BI interactive cross-filters reset");
+  };
+
   // Custom Power BI Embed URL State
   const [customEmbedUrl, setCustomEmbedUrl] = useState<string>(
     initialEmbedUrl || "https://app.powerbi.com/view?r=eyJrIjoiDemoRestaurantPowerBiReportKey"
@@ -193,19 +209,24 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
     setIsFullscreen(!isFullscreen);
   };
 
-  // Filtered Orders Calculation
+  // Filtered Orders Calculation (combining slicers + active cross-filters)
   const paidOrders = useMemo(() => {
     return orders.filter((o) => {
       if (o.paymentStatus !== "paid") return false;
+      // Report Slicers
       if (orderTypeSlicer === "dine-in" && !o.tableId) return false;
       if (orderTypeSlicer === "takeaway" && o.tableId) return false;
       if (paymentSlicer === "upi" && o.paymentMethod !== "upi") return false;
       if (paymentSlicer === "cash" && o.paymentMethod !== "cash") return false;
+      
+      // Interactive Cross-Filters
+      if (crossPayment && o.paymentMethod !== crossPayment) return false;
+      if (crossDish && !o.items.some(i => i.product.name.toLowerCase().includes(crossDish.toLowerCase()))) return false;
       return true;
     });
-  }, [orders, orderTypeSlicer, paymentSlicer]);
+  }, [orders, orderTypeSlicer, paymentSlicer, crossPayment, crossDish]);
 
-  // Aggregate Metrics based on Slicers
+  // Aggregate Metrics based on Slicers & Cross-Filters
   const liveNetSales = paidOrders.reduce((s, o) => s + o.total, 0);
   const liveGrossSales = paidOrders.reduce((s, o) => s + o.subtotal, 0);
   const liveTax = paidOrders.reduce((s, o) => s + o.tax, 0);
@@ -215,27 +236,40 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
   const baseTax = 1658;
   const baseOrdersCount = 62;
 
-  // Apply slicer multipliers to demo data
+  // Multiplier combining explicit slicers and cross-filters
   const slicerMultiplier = useMemo(() => {
     let mult = 1.0;
     if (orderTypeSlicer === "dine-in") mult *= 0.68;
     if (orderTypeSlicer === "takeaway") mult *= 0.32;
     if (paymentSlicer === "upi") mult *= 0.64;
     if (paymentSlicer === "cash") mult *= 0.36;
+
+    if (crossPayment === "upi") mult *= 0.64;
+    if (crossPayment === "cash") mult *= 0.36;
+    if (crossHour) mult *= 0.16;
+    if (crossDate) mult *= 0.82;
+    if (crossDish) mult *= 0.28;
+
     return mult;
-  }, [orderTypeSlicer, paymentSlicer]);
+  }, [orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDate, crossDish]);
 
   const displayNetSales = liveNetSales > 0 ? liveNetSales : Math.round(baseTodaySales * slicerMultiplier);
   const displayGrossSales = liveGrossSales > 0 ? liveGrossSales : Math.round(baseGrossSales * slicerMultiplier);
   const displayTax = liveTax > 0 ? liveTax : Math.round(baseTax * slicerMultiplier);
-  const displayOrderCount = paidOrders.length > 0 ? paidOrders.length : Math.round(baseOrdersCount * slicerMultiplier);
+  const displayOrderCount = paidOrders.length > 0 ? paidOrders.length : Math.max(1, Math.round(baseOrdersCount * slicerMultiplier));
   const displayAov = displayOrderCount > 0 ? Math.round(displayNetSales / displayOrderCount) : 561;
 
-  // UPI vs Cash Split
+  // UPI vs Cash Split with Cross-Filtering
   const liveUpi = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
   const liveCash = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
-  const displayUpi = liveUpi > 0 ? liveUpi : Math.round(22400 * (paymentSlicer === "cash" ? 0 : 1));
-  const displayCash = liveCash > 0 ? liveCash : Math.round(12400 * (paymentSlicer === "upi" ? 0 : 1));
+  
+  const displayUpi = crossPayment === "cash" 
+    ? 0 
+    : (liveUpi > 0 ? liveUpi : Math.round(22400 * (paymentSlicer === "cash" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1)));
+    
+  const displayCash = crossPayment === "upi" 
+    ? 0 
+    : (liveCash > 0 ? liveCash : Math.round(12400 * (paymentSlicer === "upi" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1)));
 
   // Filtered Daily Trend Chart
   const filteredDailyTrend = useMemo(() => {
@@ -243,11 +277,16 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
       let val = d.sales;
       if (orderTypeSlicer === "dine-in") val = d.dineIn;
       if (orderTypeSlicer === "takeaway") val = d.takeaway;
-      if (paymentSlicer === "upi") val = d.upi;
-      if (paymentSlicer === "cash") val = d.cash;
+      if (paymentSlicer === "upi" || crossPayment === "upi") val = d.upi;
+      if (paymentSlicer === "cash" || crossPayment === "cash") val = d.cash;
+
+      if (crossHour) val *= 0.16;
+      if (crossDish) val *= 0.28;
+      if (crossDate && d.date !== crossDate) val *= 0.3;
+
       return { ...d, sales: Math.round(val) };
     });
-  }, [orderTypeSlicer, paymentSlicer]);
+  }, [orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDish, crossDate]);
 
   // Filtered Hourly Data & Peak Hour
   const filteredHourlyData = useMemo(() => {
@@ -255,11 +294,15 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
       let val = d.sales;
       if (orderTypeSlicer === "dine-in") val = d.dineIn;
       if (orderTypeSlicer === "takeaway") val = d.takeaway;
-      if (paymentSlicer === "upi") val = d.upi;
-      if (paymentSlicer === "cash") val = d.cash;
+      if (paymentSlicer === "upi" || crossPayment === "upi") val = d.upi;
+      if (paymentSlicer === "cash" || crossPayment === "cash") val = d.cash;
+
+      if (crossDish) val *= 0.28;
+      if (crossDate) val *= 0.82;
+
       return { ...d, sales: Math.round(val) };
     });
-  }, [orderTypeSlicer, paymentSlicer]);
+  }, [orderTypeSlicer, paymentSlicer, crossPayment, crossDish, crossDate]);
 
   const maxHourlyVal = Math.max(...filteredHourlyData.map(d => d.sales));
   const hourlyDataWithPeaks = filteredHourlyData.map(d => ({
@@ -268,23 +311,24 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
   }));
   const peakHour = hourlyDataWithPeaks.find(d => d.isPeak) || hourlyDataWithPeaks[9];
 
-  // Top Dishes calculation
+  // Top Dishes calculation with Cross-filtering
   const topDishes = useMemo(() => {
     return [...products]
       .filter(p => !searchFilter || p.name.toLowerCase().includes(searchFilter.toLowerCase()))
+      .filter(p => !crossDish || p.name.toLowerCase().includes(crossDish.toLowerCase()))
       .map(p => ({
         ...p,
-        unitsSold: p.soldToday ?? 12,
+        unitsSold: Math.max(1, Math.round((p.soldToday ?? 12) * (crossHour ? 0.2 : 1) * (crossPayment ? 0.6 : 1))),
         revenue: Math.round((p.soldToday ?? 12) * p.price * slicerMultiplier)
       }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 8);
-  }, [products, slicerMultiplier, searchFilter]);
+  }, [products, slicerMultiplier, searchFilter, crossDish, crossHour, crossPayment]);
 
   const pieData = [
-    { name: "UPI QR Payments", value: displayUpi },
-    { name: "Physical Cash", value: displayCash },
-  ].filter(d => d.value > 0);
+    { name: "UPI QR Payments", value: displayUpi, mode: "upi" },
+    { name: "Physical Cash", value: displayCash, mode: "cash" },
+  ].filter(d => d.value > 0 || crossPayment !== null);
 
   // Helper to generate CSV strings for export
   const getTableCsv = (type: string) => {
@@ -504,6 +548,47 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
         )}
       </div>
 
+      {/* POWER BI INTERACTIVE CROSS-FILTERING ACTIVE BANNER */}
+      {isCrossFiltered && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#F2C811]/15 border-2 border-[#F2C811] p-3 text-xs font-bold text-foreground shadow-md animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 font-black text-[#F2C811] uppercase tracking-wide">
+              <Sparkles className="size-4 animate-spin text-[#F2C811]" /> Active Cross-Filter:
+            </span>
+            {crossPayment && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-[#F2C811] text-black px-2.5 py-1 text-[11px] font-black uppercase shadow">
+                Payment Mode: {crossPayment === "upi" ? "UPI QR Code" : "Physical Cash"}
+                <button onClick={() => setCrossPayment(null)} className="ml-1 text-black/70 hover:text-red-700 font-extrabold">✕</button>
+              </span>
+            )}
+            {crossHour && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-[#F2C811] text-black px-2.5 py-1 text-[11px] font-black uppercase shadow">
+                Rush Hour: {crossHour}
+                <button onClick={() => setCrossHour(null)} className="ml-1 text-black/70 hover:text-red-700 font-extrabold">✕</button>
+              </span>
+            )}
+            {crossDate && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-[#F2C811] text-black px-2.5 py-1 text-[11px] font-black uppercase shadow">
+                Date: {crossDate}
+                <button onClick={() => setCrossDate(null)} className="ml-1 text-black/70 hover:text-red-700 font-extrabold">✕</button>
+              </span>
+            )}
+            {crossDish && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-[#F2C811] text-black px-2.5 py-1 text-[11px] font-black uppercase shadow">
+                Dish Filter: {crossDish}
+                <button onClick={() => setCrossDish(null)} className="ml-1 text-black/70 hover:text-red-700 font-extrabold">✕</button>
+              </span>
+            )}
+          </div>
+          <button
+            onClick={clearCrossFilters}
+            className="inline-flex items-center gap-1 rounded-xl bg-black text-[#F2C811] px-3.5 py-1.5 text-xs font-black hover:bg-black/80 transition-colors shadow"
+          >
+            Reset Canvas Cross-Filters
+          </button>
+        </div>
+      )}
+
       {/* 4. PAGE CONTENTS */}
 
       {/* PAGE 1: EXECUTIVE OVERVIEW */}
@@ -559,8 +644,9 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                   <div>
                     <h3 className="font-extrabold text-base flex items-center gap-2">
                       <TrendingUp className="size-4 text-[#F2C811]" /> Daily Revenue Trend Curve
+                      <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">⚡ Interactive Cross-Filter</span>
                     </h3>
-                    <p className="text-xs text-muted-foreground">Historical revenue dynamically filtered by slicers</p>
+                    <p className="text-xs text-muted-foreground">Click any node to cross-filter canvas by date</p>
                   </div>
                   <button 
                     onClick={() => copyText(getTableCsv("daily"), "daily-trend-csv")}
@@ -572,11 +658,26 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
 
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={filteredDailyTrend}>
+                    <LineChart 
+                      data={filteredDailyTrend}
+                      onClick={(data) => {
+                        if (data && data.activePayload && data.activePayload[0]) {
+                          const selectedDate = data.activePayload[0].payload.date;
+                          setCrossDate(prev => prev === selectedDate ? null : selectedDate);
+                        }
+                      }}
+                    >
                       <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} />
                       <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${v / 1000}k`} />
                       <Tooltip formatter={(v: number) => inr(v)} cursor={{ stroke: "#F2C811", strokeDasharray: "3 3" }} />
-                      <Line type="monotone" dataKey="sales" stroke="#F2C811" strokeWidth={3.5} dot={{ r: 5, fill: "#F2C811" }} activeDot={{ r: 8 }} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="sales" 
+                        stroke="#F2C811" 
+                        strokeWidth={3.5} 
+                        dot={{ r: 6, fill: "#F2C811", cursor: "pointer" }} 
+                        activeDot={{ r: 9, cursor: "pointer" }} 
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -586,18 +687,34 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                 <div>
                   <h3 className="font-extrabold text-base flex items-center gap-2 mb-1">
                     <PieIcon className="size-4 text-emerald-500" /> Payment Mode Split
+                    <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">⚡ Interactive Cross-Filter</span>
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-3">UPI QR Code vs Cash Register Share</p>
+                  <p className="text-xs text-muted-foreground mb-3">Click slice or card to filter dashboard by payment mode</p>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 p-3 border border-emerald-500/20">
+                    <div 
+                      onClick={() => setCrossPayment(prev => prev === "upi" ? null : "upi")}
+                      className={`cursor-pointer transition-all border p-3 rounded-xl flex items-center justify-between ${
+                        crossPayment === "upi" 
+                          ? "ring-2 ring-emerald-500 bg-emerald-500/25 font-bold shadow" 
+                          : "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15"
+                      }`}
+                    >
                       <div className="flex items-center gap-2">
                         <QrCode className="size-4 text-emerald-600" />
                         <span className="text-xs font-bold text-foreground">UPI QR</span>
                       </div>
                       <span className="text-xs font-black text-emerald-600 font-mono">{inr(displayUpi)}</span>
                     </div>
-                    <div className="flex items-center justify-between rounded-xl bg-blue-500/10 p-3 border border-blue-500/20">
+
+                    <div 
+                      onClick={() => setCrossPayment(prev => prev === "cash" ? null : "cash")}
+                      className={`cursor-pointer transition-all border p-3 rounded-xl flex items-center justify-between ${
+                        crossPayment === "cash" 
+                          ? "ring-2 ring-blue-500 bg-blue-500/25 font-bold shadow" 
+                          : "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/15"
+                      }`}
+                    >
                       <div className="flex items-center gap-2">
                         <Banknote className="size-4 text-blue-600" />
                         <span className="text-xs font-bold text-foreground">Cash</span>
@@ -610,8 +727,34 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                 <div className="h-36 mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={25} outerRadius={50} paddingAngle={5} dataKey="value">
-                        {pieData.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      <Pie 
+                        data={pieData} 
+                        cx="50%" 
+                        cy="50%" 
+                        innerRadius={25} 
+                        outerRadius={50} 
+                        paddingAngle={5} 
+                        dataKey="value"
+                        style={{ cursor: "pointer" }}
+                        onClick={(entry) => {
+                          if (entry && entry.name) {
+                            const mode = entry.name.toLowerCase().includes("upi") ? "upi" : "cash";
+                            setCrossPayment(prev => prev === mode ? null : mode);
+                          }
+                        }}
+                      >
+                        {pieData.map((entry, index) => {
+                          const isSelected = !crossPayment || (crossPayment === "upi" && entry.name.includes("UPI")) || (crossPayment === "cash" && entry.name.includes("Cash"));
+                          return (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                              opacity={isSelected ? 1 : 0.25}
+                              stroke={crossPayment && isSelected ? "#ffffff" : "none"}
+                              strokeWidth={2}
+                            />
+                          );
+                        })}
                       </Pie>
                       <Tooltip formatter={(value: number) => inr(value)} />
                       <Legend />
@@ -657,7 +800,13 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                   </thead>
                   <tbody className="divide-y font-mono">
                     {RAW_DAILY_TREND.map((d) => (
-                      <tr key={d.date} className="hover:bg-muted/30">
+                      <tr 
+                        key={d.date} 
+                        onClick={() => setCrossDate(prev => prev === d.date ? null : d.date)}
+                        className={`cursor-pointer transition-colors ${
+                          crossDate === d.date ? "bg-amber-500/20 font-bold border-l-4 border-l-amber-500" : "hover:bg-muted/30"
+                        }`}
+                      >
                         <td className="p-3 font-bold text-foreground font-sans">{d.date}</td>
                         <td className="p-3 text-center font-bold text-foreground">{d.orders} orders</td>
                         <td className="p-3 text-right">{inr(d.gross)}</td>
@@ -682,9 +831,10 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
               <div>
                 <h3 className="font-extrabold text-lg flex items-center gap-2">
                   <Clock className="size-5 text-amber-500" /> Hourly Rush Traffic Table & Chart
+                  <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full">⚡ Interactive Cross-Filter</span>
                 </h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  View hourly order volume breakdown in visual chart or raw table dataset.
+                  Click any hourly bar or table row to cross-filter the report canvas by that hour window.
                 </p>
               </div>
 
@@ -710,10 +860,28 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                   <XAxis dataKey="hour" tickLine={false} axisLine={false} fontSize={12} />
                   <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${v}`} />
                   <Tooltip formatter={(v: number) => inr(v)} cursor={{ fill: "var(--muted)" }} />
-                  <Bar dataKey="sales" radius={[8, 8, 0, 0]}>
-                    {hourlyDataWithPeaks.map((entry, index) => (
-                      <Cell key={`hour-${index}`} fill={entry.isPeak ? "#f97316" : "#F2C811"} opacity={entry.isPeak ? 1 : 0.75} />
-                    ))}
+                  <Bar 
+                    dataKey="sales" 
+                    radius={[8, 8, 0, 0]}
+                    style={{ cursor: "pointer" }}
+                    onClick={(entry) => {
+                      if (entry && entry.hour) {
+                        setCrossHour(prev => prev === entry.hour ? null : entry.hour);
+                      }
+                    }}
+                  >
+                    {hourlyDataWithPeaks.map((entry, index) => {
+                      const isSelected = !crossHour || crossHour === entry.hour;
+                      return (
+                        <Cell 
+                          key={`hour-${index}`} 
+                          fill={crossHour === entry.hour ? "#3b82f6" : entry.isPeak ? "#f97316" : "#F2C811"} 
+                          opacity={isSelected ? 1 : 0.25} 
+                          stroke={crossHour === entry.hour ? "#ffffff" : "none"}
+                          strokeWidth={2}
+                        />
+                      );
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -735,7 +903,17 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                 </thead>
                 <tbody className="divide-y font-mono">
                   {RAW_HOURLY_DATA.map((h) => (
-                    <tr key={h.hour} className={h.sales === maxHourlyVal ? "bg-amber-500/10 font-bold" : "hover:bg-muted/30"}>
+                    <tr 
+                      key={h.hour} 
+                      onClick={() => setCrossHour(prev => prev === h.hour ? null : h.hour)}
+                      className={`cursor-pointer transition-colors ${
+                        crossHour === h.hour 
+                          ? "bg-amber-500/25 font-black border-l-4 border-l-amber-500" 
+                          : h.sales === maxHourlyVal 
+                            ? "bg-amber-500/10 font-bold hover:bg-amber-500/20" 
+                            : "hover:bg-muted/30"
+                      }`}
+                    >
                       <td className="p-3 font-extrabold text-foreground font-sans flex items-center gap-1.5">
                         <Clock className="size-3.5 text-amber-500" /> {h.hour}
                       </td>
@@ -762,9 +940,10 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
               <div>
                 <h3 className="font-extrabold text-lg flex items-center gap-2">
                   <Flame className="size-5 text-amber-500" /> Top Selling Dishes Matrix Table (`v_powerbi_top_dishes`)
+                  <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">⚡ Interactive Cross-Filter</span>
                 </h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Complete food menu revenue breakdown ready to copy or export.
+                  Click any dish row below to cross-filter the report canvas specifically for that dish.
                 </p>
               </div>
 
@@ -797,7 +976,13 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
                 </thead>
                 <tbody className="divide-y">
                   {topDishes.map((p, idx) => (
-                    <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                    <tr 
+                      key={p.id} 
+                      onClick={() => setCrossDish(prev => prev === p.name ? null : p.name)}
+                      className={`cursor-pointer transition-colors ${
+                        crossDish === p.name ? "bg-primary/20 font-bold border-l-4 border-l-primary" : "hover:bg-muted/30"
+                      }`}
+                    >
                       <td className="p-3">
                         <span className={`inline-grid size-6 place-items-center rounded-lg text-xs font-black ${
                           idx === 0 ? "bg-amber-500/20 text-amber-600" :
