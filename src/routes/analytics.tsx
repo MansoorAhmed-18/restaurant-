@@ -1,19 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { 
-  BarChart3, IndianRupee, QrCode, Banknote, 
-  ArrowUpRight, Calendar, CheckCircle2 
-} from "lucide-react";
-import { AppShell } from "@/components/pos/AppShell";
-import { PageHeader } from "@/components/pos/ui";
-import { meta } from "@/lib/meta";
-import { usePos } from "@/lib/pos-store";
-import { inr } from "@/lib/api";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { PowerBiDashboardView } from "@/components/pos/PowerBiDashboardView";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/analytics")({
-  head: () => meta("Daily Analytics & Collection Reports", "Live daily collection breakdown, GST tax summary & Power BI integration."),
-  component: Analytics,
+  beforeLoad: () => {
+    throw redirect({ to: "/powerbi" });
+  },
 });
 
 function Analytics() {

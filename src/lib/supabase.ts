@@ -74,31 +74,36 @@ export async function syncOrderToSupabase(order: any) {
   if (!supabase) return false;
 
   try {
-    const { error: orderError } = await supabase.from("orders").upsert({
-      id: order.id,
-      number: order.number,
-      table_id: order.tableId || null,
-      customer_id: order.customerId || null,
-      subtotal: order.subtotal,
-      tax: order.tax,
-      total: order.total,
-      status: order.status,
-      payment_status: order.paymentStatus,
-      payment_method: order.paymentMethod || null,
-      order_type: order.type || "dine-in",
-      created_at: order.createdAt || new Date().toISOString(),
-    });
+    const { error: orderError } = await supabase.from("orders").upsert(
+      {
+        id: order.id,
+        number: order.number,
+        table_id: order.tableId || null,
+        customer_id: order.customerId || null,
+        subtotal: order.subtotal,
+        tax: order.tax,
+        total: order.total,
+        status: order.status,
+        payment_status: order.paymentStatus,
+        payment_method: order.paymentMethod || null,
+        order_type: order.type || "dine-in",
+        created_at: order.createdAt || new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
     if (orderError) {
       console.error("Failed to sync order to Supabase:", orderError);
       return false;
     }
 
-    // Insert order line items
+    // Insert order line items (delete existing items for this order first to avoid double counting!)
     if (order.items && order.items.length > 0) {
+      await supabase.from("order_items").delete().eq("order_id", order.id);
+
       const lineItems = order.items.map((item: any) => ({
         order_id: order.id,
-        product_id: item.productId,
+        product_id: item.productId || null,
         name: item.name,
         price: item.price,
         qty: item.qty,

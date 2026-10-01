@@ -15,8 +15,7 @@ const nav = [
   { to: "/menu", label: "Menu", icon: UtensilsCrossed },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/payments", label: "Payments", icon: CreditCard },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/powerbi", label: "Power BI", icon: Database },
+  { to: "/powerbi", label: "Power BI Analytics", icon: BarChart3 },
 ] as const;
 
 export function Logo() {

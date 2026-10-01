@@ -83,12 +83,21 @@ export function PosProvider({ children }: { children: ReactNode }) {
       if (isMounted && remoteOrders && remoteOrders.length > 0) {
         setOrders((localOrders) => {
           const map = new Map<string, Order>();
-          // Remote orders take precedence
-          remoteOrders.forEach((ro: Order) => map.set(ro.id, ro));
-          // Preserve local orders not yet in remote
-          localOrders.forEach((lo) => {
-            if (!map.has(lo.id)) map.set(lo.id, lo);
+          // First add local orders (which contain local paid status)
+          localOrders.forEach((lo) => map.set(lo.id, lo));
+
+          // Merge remote orders, keeping paid status if local is paid
+          remoteOrders.forEach((ro: Order) => {
+            const local = map.get(ro.id);
+            if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
+              const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
+              map.set(ro.id, merged);
+              syncOrderToSupabase(merged);
+            } else {
+              map.set(ro.id, ro);
+            }
           });
+
           return Array.from(map.values()).sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );

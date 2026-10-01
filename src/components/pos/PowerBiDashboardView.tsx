@@ -48,73 +48,85 @@ const DAX_MEASURES = [
     category: "Key Revenue Metrics",
     title: "Net Collection / Total Sales",
     dax: `Net Sales = SUM(v_powerbi_daily_earnings[total_net_earnings])`,
-    desc: "Calculates total net revenue collected from all paid bills."
+    desc: "Calculates total net revenue collected from all paid bills.",
+    visual: "Card Visual (Header KPI)"
   },
   {
     category: "Key Revenue Metrics",
     title: "Gross Sales (Excl Tax)",
     dax: `Gross Sales = SUM(v_powerbi_daily_earnings[gross_sales])`,
-    desc: "Calculates total food and beverage sales before GST tax."
+    desc: "Calculates total food and beverage sales before GST tax.",
+    visual: "Card Visual / Multi-Row Card"
   },
   {
     category: "Key Revenue Metrics",
     title: "Total GST Tax Collected (5%)",
     dax: `Total GST Collected = SUM(v_powerbi_daily_earnings[total_tax_collected])`,
-    desc: "Calculates total tax collected (CGST 2.5% + SGST 2.5%)."
+    desc: "Calculates total tax collected (CGST 2.5% + SGST 2.5%).",
+    visual: "Card Visual (Tax KPI)"
   },
   {
     category: "Key Revenue Metrics",
     title: "Average Order Value (AOV)",
     dax: `Average Order Value = DIVIDE([Net Sales], SUM(v_powerbi_daily_earnings[paid_orders]), 0)`,
-    desc: "Computes average ticket spend per customer bill."
+    desc: "Computes average ticket spend per customer bill.",
+    visual: "Card Visual / Line Chart Overlay"
   },
   {
     category: "Payment Analysis",
     title: "UPI Revenue Share",
     dax: `UPI Sales = CALCULATE([Net Sales], v_powerbi_payment_summary[payment_method] = "upi")`,
-    desc: "Total revenue processed via GPay, PhonePe, and QR code scan."
+    desc: "Total revenue processed via GPay, PhonePe, and QR code scan.",
+    visual: "Donut Chart / Pie Chart"
   },
   {
     category: "Payment Analysis",
     title: "Cash Register Collection",
     dax: `Cash Sales = CALCULATE([Net Sales], v_powerbi_payment_summary[payment_method] = "cash")`,
-    desc: "Total physical cash received in restaurant drawer."
+    desc: "Total physical cash received in restaurant drawer.",
+    visual: "Donut Chart / Pie Chart"
   },
   {
     category: "Payment Analysis",
     title: "UPI Share Percentage %",
     dax: `UPI Share % = DIVIDE([UPI Sales], [Net Sales], 0)`,
-    desc: "Percentage of total collection coming through digital UPI."
+    desc: "Percentage of total collection coming through digital UPI.",
+    visual: "Gauge Visual / Donut Tooltip"
   },
   {
     category: "Payment Analysis",
     title: "Cash Share Percentage %",
     dax: `Cash Share % = DIVIDE([Cash Sales], [Net Sales], 0)`,
-    desc: "Percentage of total collection coming through physical cash."
+    desc: "Percentage of total collection coming through physical cash.",
+    visual: "Gauge Visual / Donut Tooltip"
   },
   {
     category: "Order Type Analysis",
     title: "Dine-In Revenue",
     dax: `Dine In Sales = CALCULATE(SUM(v_powerbi_order_type_breakdown[total_revenue]), v_powerbi_order_type_breakdown[order_type] = "dine-in")`,
-    desc: "Total revenue generated from table dining orders."
+    desc: "Total revenue generated from table dining orders.",
+    visual: "Stacked Bar Chart / Treemap"
   },
   {
     category: "Order Type Analysis",
     title: "Takeaway Revenue",
     dax: `Takeaway Sales = CALCULATE(SUM(v_powerbi_order_type_breakdown[total_revenue]), v_powerbi_order_type_breakdown[order_type] = "takeaway")`,
-    desc: "Total revenue generated from takeaway counter orders."
+    desc: "Total revenue generated from takeaway counter orders.",
+    visual: "Stacked Bar Chart / Treemap"
   },
   {
     category: "Rush & Peak Hours",
     title: "Peak Rush Hour Volume",
     dax: `Peak Hour Sales = MAXX(v_powerbi_hourly_earnings, v_powerbi_hourly_earnings[hourly_sales])`,
-    desc: "Finds maximum hourly revenue recorded during dinner shift."
+    desc: "Finds maximum hourly revenue recorded during dinner shift.",
+    visual: "Clustered Column Chart (Hourly Axis)"
   },
   {
     category: "Growth & Targets",
     title: "Daily Target Progress %",
     dax: `Daily Target % = DIVIDE([Net Sales], 40000, 0)`,
-    desc: "Tracks today's sales progress against ₹40,000 target."
+    desc: "Tracks today's sales progress against ₹40,000 target.",
+    visual: "Gauge Visual / KPI Progress Bar"
   },
 ];
 
@@ -1124,11 +1136,13 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
             {DAX_MEASURES.map((measure, idx) => (
               <div key={idx} className="rounded-2xl border bg-muted/30 p-4 space-y-3 flex flex-col justify-between hover:border-purple-500/40 transition-colors">
                 <div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[10px] font-black uppercase text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md">
                       {measure.category}
                     </span>
-                    <span className="text-[11px] font-mono text-muted-foreground font-bold">Measure #{idx + 1}</span>
+                    <span className="text-[10px] font-extrabold text-[#F2C811] bg-[#F2C811]/10 px-2 py-0.5 rounded-md border border-[#F2C811]/20">
+                      📊 {measure.visual}
+                    </span>
                   </div>
                   <h4 className="font-extrabold text-sm text-foreground mt-2">{measure.title}</h4>
                   <p className="text-xs text-muted-foreground mt-0.5">{measure.desc}</p>
