@@ -163,3 +163,122 @@ export async function fetchOrdersFromSupabase() {
     return null;
   }
 }
+
+/**
+ * Sync product item to Supabase database (Insert or Update)
+ */
+export async function syncProductToSupabase(product: any) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("products").upsert(
+      {
+        id: product.id,
+        name: product.name,
+        category_id: product.categoryId || null,
+        price: product.price,
+        emoji: product.emoji || "🍲",
+        veg: Boolean(product.veg),
+        available: product.available !== undefined ? Boolean(product.available) : true,
+        sold_today: product.soldToday || 0,
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.error("Failed to sync product to Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Supabase product sync exception:", err);
+    return false;
+  }
+}
+
+/**
+ * Delete product item from Supabase database
+ */
+export async function deleteProductFromSupabase(productId: string) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("products").delete().eq("id", productId);
+    if (error) {
+      console.error("Failed to delete product from Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Supabase product delete exception:", err);
+    return false;
+  }
+}
+
+/**
+ * Sync menu category to Supabase database
+ */
+export async function syncCategoryToSupabase(category: any) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("categories").upsert(
+      {
+        id: category.id,
+        name: category.name,
+        emoji: category.emoji || "🍽️",
+        display_order: category.displayOrder || 0,
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.error("Failed to sync category to Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Supabase category sync exception:", err);
+    return false;
+  }
+}
+
+/**
+ * Fetch products from Supabase to hydrate state
+ */
+export async function fetchProductsFromSupabase() {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from("products").select("*").order("name");
+    if (error || !data) return null;
+    return data.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      categoryId: p.category_id || "",
+      price: Number(p.price || 0),
+      emoji: p.emoji || "🍲",
+      veg: Boolean(p.veg),
+      available: Boolean(p.available),
+      soldToday: Number(p.sold_today || 0),
+    }));
+  } catch (err) {
+    console.error("Fetch products exception:", err);
+    return null;
+  }
+}
+
+/**
+ * Fetch categories from Supabase
+ */
+export async function fetchCategoriesFromSupabase() {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from("categories").select("*").order("display_order");
+    if (error || !data) return null;
+    return data.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji || "🍽️",
+    }));
+  } catch (err) {
+    console.error("Fetch categories exception:", err);
+    return null;
+  }
+}

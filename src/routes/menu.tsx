@@ -14,6 +14,7 @@ import { usePos } from "@/lib/pos-store";
 import type { Category, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
+import { syncProductToSupabase, deleteProductFromSupabase, syncCategoryToSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/menu")({
   head: () => meta("Menu", "Add, edit and manage dishes and menu categories."),
@@ -34,16 +35,36 @@ function MenuPage() {
     const f = new FormData(e.currentTarget);
     const data = { name: String(f.get("name")), price: Number(f.get("price")), categoryId: String(f.get("categoryId")), emoji: String(f.get("emoji") || "🍽️"), veg: f.get("veg") === "on" };
     if (!data.name || !data.price) return toast.error("Name and price are required");
-    if (editing === "new") setProducts((ps) => [...ps, { ...data, id: `p${Date.now()}`, available: true, soldToday: 0 }]);
-    else if (editing) setProducts((ps) => ps.map((p) => (p.id === editing.id ? { ...p, ...data } : p)));
-    toast.success("Menu saved"); setEditing(null);
+    if (editing === "new") {
+      const newProd = { ...data, id: `p${Date.now()}`, available: true, soldToday: 0 };
+      setProducts((ps) => [...ps, newProd]);
+      syncProductToSupabase(newProd);
+    } else if (editing) {
+      const updatedProd = { ...editing, ...data };
+      setProducts((ps) => ps.map((p) => (p.id === editing.id ? updatedProd : p)));
+      syncProductToSupabase(updatedProd);
+    }
+    toast.success("Menu saved & synced to Supabase"); setEditing(null);
   };
 
   return (
     <AppShell>
       <PageHeader title="Menu" subtitle={`${products.length} dishes across ${cats.length} categories`}
         actions={<>
-          <button onClick={() => { const n = prompt("New category name"); if (n) setExtraCats((c) => [...c, { id: `c${Date.now()}`, name: n, emoji: "🍽️" }]); }} className="rounded-xl border bg-card px-4 py-2.5 text-sm font-bold">+ Category</button>
+          <button 
+            onClick={() => { 
+              const n = prompt("New category name"); 
+              if (n) {
+                const newCat = { id: `c${Date.now()}`, name: n, emoji: "🍽️" };
+                setExtraCats((c) => [...c, newCat]); 
+                syncCategoryToSupabase(newCat);
+                toast.success(`Category ${n} created`);
+              } 
+            }} 
+            className="rounded-xl border bg-card px-4 py-2.5 text-sm font-bold"
+          >
+            + Category
+          </button>
           <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="size-4" />Add dish</button>
         </>} />
       <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
@@ -64,13 +85,37 @@ function MenuPage() {
                 <div className="flex items-center gap-2"><VegMark veg={p.veg} /><span className="truncate font-bold">{p.name}</span></div>
                 <div className="text-sm text-muted-foreground">{cats.find((c) => c.id === p.categoryId)?.name} · <span className="font-semibold text-foreground">{inr(p.price)}</span></div>
                 <label className="mt-2 flex items-center gap-2 text-xs font-semibold">
-                  <Switch checked={p.available} onCheckedChange={(v) => setProducts((ps) => ps.map((x) => (x.id === p.id ? { ...x, available: v } : x)))} />
+                  <Switch 
+                    checked={p.available} 
+                    onCheckedChange={(v) => {
+                      setProducts((ps) => ps.map((x) => {
+                        if (x.id === p.id) {
+                          const updated = { ...x, available: v };
+                          syncProductToSupabase(updated);
+                          return updated;
+                        }
+                        return x;
+                      }));
+                    }} 
+                  />
                   {p.available ? "In stock" : "Out of stock"}
                 </label>
               </div>
               <div className="flex flex-col gap-1">
                 <button onClick={() => setEditing(p)} className="rounded-lg p-2 hover:bg-muted" aria-label="Edit"><Pencil className="size-4" /></button>
-                <button onClick={() => { if (confirm(`Delete ${p.name}?`)) setProducts((ps) => ps.filter((x) => x.id !== p.id)); }} className="rounded-lg p-2 text-destructive hover:bg-danger-soft" aria-label="Delete"><Trash2 className="size-4" /></button>
+                <button 
+                  onClick={() => { 
+                    if (confirm(`Delete ${p.name}?`)) {
+                      setProducts((ps) => ps.filter((x) => x.id !== p.id));
+                      deleteProductFromSupabase(p.id);
+                      toast.success(`Deleted ${p.name}`);
+                    } 
+                  }} 
+                  className="rounded-lg p-2 text-destructive hover:bg-danger-soft" 
+                  aria-label="Delete"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
             </div>
           ))}

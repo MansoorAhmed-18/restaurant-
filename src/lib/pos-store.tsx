@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock-data";
-import { syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, isSupabaseConfigured } from "./supabase";
+import { syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, fetchProductsFromSupabase, isSupabaseConfigured } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 
 interface Store {
@@ -101,6 +101,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
           return Array.from(map.values()).sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
+        });
+      }
+    });
+
+    fetchProductsFromSupabase().then((remoteProducts) => {
+      if (isMounted && remoteProducts && remoteProducts.length > 0) {
+        setProducts((localProds) => {
+          const map = new Map<string, Product>();
+          localProds.forEach((p) => map.set(p.id, p));
+          remoteProducts.forEach((rp: Product) => map.set(rp.id, rp));
+          return Array.from(map.values());
         });
       }
     });
