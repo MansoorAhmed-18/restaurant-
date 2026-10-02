@@ -274,14 +274,22 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
     ? 0 
     : (liveCash > 0 ? liveCash : Math.round(12400 * (paymentSlicer === "upi" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1)));
 
-  // Filtered Daily Trend Chart
+  // Filtered Daily Trend Chart (dynamically updated from live paid orders)
   const filteredDailyTrend = useMemo(() => {
+    const dateMap: Record<string, number> = {};
+    (paidOrders || []).forEach(o => {
+      if (!o || !o.createdAt) return;
+      const d = new Date(o.createdAt);
+      const dateStr = `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`;
+      dateMap[dateStr] = (dateMap[dateStr] || 0) + o.total;
+    });
+
     return RAW_DAILY_TREND.map(d => {
-      let val = d.sales;
-      if (orderTypeSlicer === "dine-in") val = d.dineIn;
-      if (orderTypeSlicer === "takeaway") val = d.takeaway;
-      if (paymentSlicer === "upi" || crossPayment === "upi") val = d.upi;
-      if (paymentSlicer === "cash" || crossPayment === "cash") val = d.cash;
+      let val = dateMap[d.date] !== undefined ? dateMap[d.date] : d.sales;
+      if (orderTypeSlicer === "dine-in") val = Math.round(val * 0.68);
+      if (orderTypeSlicer === "takeaway") val = Math.round(val * 0.32);
+      if (paymentSlicer === "upi" || crossPayment === "upi") val = Math.round(val * 0.64);
+      if (paymentSlicer === "cash" || crossPayment === "cash") val = Math.round(val * 0.36);
 
       if (crossHour) val *= 0.16;
       if (crossDish) val *= 0.28;
@@ -289,23 +297,32 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
 
       return { ...d, sales: Math.round(val) };
     });
-  }, [orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDish, crossDate]);
+  }, [paidOrders, orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDish, crossDate]);
 
-  // Filtered Hourly Data & Peak Hour
+  // Filtered Hourly Data & Peak Hour (dynamically updated from live paid orders)
   const filteredHourlyData = useMemo(() => {
+    const hourlyMap: Record<string, number> = {};
+    (paidOrders || []).forEach(o => {
+      if (!o || !o.createdAt) return;
+      const d = new Date(o.createdAt);
+      const hour = d.getHours();
+      const formattedHour = hour === 0 ? "12 AM" : hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`;
+      hourlyMap[formattedHour] = (hourlyMap[formattedHour] || 0) + o.total;
+    });
+
     return RAW_HOURLY_DATA.map(d => {
-      let val = d.sales;
-      if (orderTypeSlicer === "dine-in") val = d.dineIn;
-      if (orderTypeSlicer === "takeaway") val = d.takeaway;
-      if (paymentSlicer === "upi" || crossPayment === "upi") val = d.upi;
-      if (paymentSlicer === "cash" || crossPayment === "cash") val = d.cash;
+      let val = hourlyMap[d.hour] !== undefined && hourlyMap[d.hour] > 0 ? hourlyMap[d.hour] : d.sales;
+      if (orderTypeSlicer === "dine-in") val = Math.round(val * 0.68);
+      if (orderTypeSlicer === "takeaway") val = Math.round(val * 0.32);
+      if (paymentSlicer === "upi" || crossPayment === "upi") val = Math.round(val * 0.64);
+      if (paymentSlicer === "cash" || crossPayment === "cash") val = Math.round(val * 0.36);
 
       if (crossDish) val *= 0.28;
       if (crossDate) val *= 0.82;
 
       return { ...d, sales: Math.round(val) };
     });
-  }, [orderTypeSlicer, paymentSlicer, crossPayment, crossDish, crossDate]);
+  }, [paidOrders, orderTypeSlicer, paymentSlicer, crossPayment, crossDish, crossDate]);
 
   const maxHourlyVal = Math.max(...filteredHourlyData.map(d => d.sales));
   const hourlyDataWithPeaks = filteredHourlyData.map(d => ({
@@ -314,19 +331,34 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
   }));
   const peakHour = hourlyDataWithPeaks.find(d => d.isPeak) || hourlyDataWithPeaks[9];
 
-  // Top Dishes calculation with Cross-filtering
+  // Top Dishes calculation with live order aggregate
   const topDishes = useMemo(() => {
-    return [...products]
-      .filter(p => !searchFilter || p.name.toLowerCase().includes(searchFilter.toLowerCase()))
-      .filter(p => !crossDish || p.name.toLowerCase().includes(crossDish.toLowerCase()))
-      .map(p => ({
-        ...p,
-        unitsSold: Math.max(1, Math.round((p.soldToday ?? 12) * (crossHour ? 0.2 : 1) * (crossPayment ? 0.6 : 1))),
-        revenue: Math.round((p.soldToday ?? 12) * p.price * slicerMultiplier)
-      }))
+    const liveSoldMap: Record<string, { qty: number; rev: number }> = {};
+    (paidOrders || []).forEach(o => {
+      (o.items || []).forEach(item => {
+        const pId = item.productId || item.name;
+        if (!liveSoldMap[pId]) liveSoldMap[pId] = { qty: 0, rev: 0 };
+        liveSoldMap[pId].qty += item.qty;
+        liveSoldMap[pId].rev += item.price * item.qty;
+      });
+    });
+
+    return [...(products || [])]
+      .filter(p => p && (!searchFilter || p.name.toLowerCase().includes(searchFilter.toLowerCase())))
+      .filter(p => p && (!crossDish || p.name.toLowerCase().includes(crossDish.toLowerCase())))
+      .map(p => {
+        const live = liveSoldMap[p.id] || liveSoldMap[p.name];
+        const unitsSold = live ? live.qty : (p.soldToday ?? 12);
+        const revenue = live ? live.rev : Math.round(unitsSold * p.price);
+        return {
+          ...p,
+          unitsSold,
+          revenue,
+        };
+      })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 8);
-  }, [products, slicerMultiplier, searchFilter, crossDish, crossHour, crossPayment]);
+  }, [paidOrders, products, searchFilter, crossDish]);
 
   const pieData = [
     { name: "UPI QR Payments", value: displayUpi, mode: "upi" },
