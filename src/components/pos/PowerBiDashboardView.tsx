@@ -135,11 +135,14 @@ export interface PowerBiDashboardProps {
   showTabsHeader?: boolean;
 }
 
+export const FABRIC_DIRECT_URL = "https://app.fabric.microsoft.com/groups/me/reports/38c5dad2-f128-482a-a382-529715d21d5e/1eeb52d1680cd4017b76?experience=fabric-developer";
+export const FABRIC_EMBED_URL = "https://app.powerbi.com/reportEmbed?reportId=38c5dad2-f128-482a-a382-529715d21d5e&autoAuth=true";
+
 export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTabsHeader = true }: PowerBiDashboardProps) {
   const { orders, products, customers } = usePos();
   
-  // Power BI Controls State
-  const [activePage, setActivePage] = useState<"overview" | "hourly" | "dishes" | "payments" | "tables-grid" | "live-embed" | "dax">("overview");
+  // Power BI Controls State - Default to Live Fabric Embed Page
+  const [activePage, setActivePage] = useState<"overview" | "hourly" | "dishes" | "payments" | "tables-grid" | "live-embed" | "dax">("live-embed");
   const [viewModeToggle, setViewModeToggle] = useState<"visual" | "table">("visual");
   const [showFilters, setShowFilters] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -171,9 +174,9 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
     toast.success("All Power BI interactive cross-filters reset");
   };
 
-  // Custom Power BI Embed URL State
+  // Custom Power BI Embed URL State initialized with User's Fabric Report
   const [customEmbedUrl, setCustomEmbedUrl] = useState<string>(
-    initialEmbedUrl || "https://app.powerbi.com/view?r=eyJrIjoiDemoRestaurantPowerBiReportKey"
+    initialEmbedUrl || FABRIC_EMBED_URL
   );
   const [inputUrl, setInputUrl] = useState<string>(customEmbedUrl);
 
@@ -427,6 +430,15 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
               <SlidersHorizontal className="size-3.5" />
               Slicers {showFilters ? "ON" : "OFF"}
             </button>
+
+            <a
+              href={FABRIC_DIRECT_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F2C811] px-3.5 py-1.5 text-xs font-black text-black hover:opacity-90 transition-all shadow"
+            >
+              Open in Microsoft Fabric <ExternalLink className="size-3.5" />
+            </a>
 
             <button
               onClick={handleRefresh}

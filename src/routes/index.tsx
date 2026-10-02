@@ -228,9 +228,19 @@ export function Dashboard() {
           </button>
         </div>
 
-        <Link to="/powerbi" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pr-2">
-          Power BI Integration Hub <ChevronRight className="size-3.5" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <a 
+            href="https://app.fabric.microsoft.com/groups/me/reports/38c5dad2-f128-482a-a382-529715d21d5e/1eeb52d1680cd4017b76?experience=fabric-developer" 
+            target="_blank" 
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#F2C811] px-3.5 py-2 text-xs font-black text-black hover:opacity-90 transition-opacity shadow-sm"
+          >
+            Open in Microsoft Fabric ↗
+          </a>
+          <Link to="/powerbi" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pr-2">
+            Power BI Integration Hub <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* RENDER POWER BI DASHBOARD OR STANDARD DASHBOARD */}
