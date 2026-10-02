@@ -1,0 +1,26 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { getRouter } from "./router";
+import { PosProvider } from "@/lib/pos-store";
+import { Toaster } from "@/components/ui/sonner";
+import "./styles.css";
+
+const queryClient = new QueryClient();
+const router = getRouter();
+
+const rootElement = document.getElementById("root");
+if (rootElement && !rootElement.innerHTML) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <PosProvider>
+          <RouterProvider router={router} />
+          <Toaster position="top-center" />
+        </PosProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+}
