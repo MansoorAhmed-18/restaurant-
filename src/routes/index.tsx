@@ -70,19 +70,20 @@ export function Dashboard() {
     return "Good evening";
   };
 
-  // Paid orders calculation
+  // Paid orders calculation from live store
   const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
   
-  const grossSales = paidOrders.reduce((s, o) => s + o.subtotal, 0);
-  const totalTax = paidOrders.reduce((s, o) => s + o.tax, 0);
-  const todaySales = paidOrders.reduce((s, o) => s + o.total, 0) || 34800;
+  const liveNetSales = paidOrders.reduce((s, o) => s + o.total, 0);
+  const liveCash = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
+  const liveUpi = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
 
-  const cashCollection = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0) || 12400;
-  const upiCollection = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0) || 22400;
+  const todaySales = liveNetSales > 0 ? liveNetSales : 34800;
+  const cashCollection = liveCash > 0 ? liveCash : 12400;
+  const upiCollection = liveUpi > 0 ? liveUpi : 22400;
 
   const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "preparing");
-  const totalOrdersCount = 118 + orders.length;
-  const avgOrderValue = paidOrders.length > 0 ? Math.round(todaySales / paidOrders.length) : 642;
+  const totalOrdersCount = orders.length;
+  const avgOrderValue = paidOrders.length > 0 ? Math.round(liveNetSales / paidOrders.length) : 642;
   const monthlyRevenue = 284500 + todaySales;
 
   // Target Sales Setup

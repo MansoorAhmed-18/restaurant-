@@ -74,50 +74,75 @@ export function PosProvider({ children }: { children: ReactNode }) {
     }
   }, [customers]);
 
-  // Fetch live orders from Supabase PostgreSQL on app load / refresh
+  // Fetch live orders & subscribe to Supabase Realtime changes
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
     let isMounted = true;
-    fetchOrdersFromSupabase().then((remoteOrders) => {
-      if (isMounted && remoteOrders && remoteOrders.length > 0) {
-        setOrders((localOrders) => {
-          const map = new Map<string, Order>();
-          // First add local orders (which contain local paid status)
-          localOrders.forEach((lo) => map.set(lo.id, lo));
 
-          // Merge remote orders, keeping paid status if local is paid
-          remoteOrders.forEach((ro: Order) => {
-            const local = map.get(ro.id);
-            if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
-              const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
-              map.set(ro.id, merged);
-              syncOrderToSupabase(merged);
-            } else {
-              map.set(ro.id, ro);
-            }
-          });
+    const loadData = () => {
+      if (isSupabaseConfigured) {
+        fetchOrdersFromSupabase().then((remoteOrders) => {
+          if (isMounted && remoteOrders && remoteOrders.length > 0) {
+            setOrders((localOrders) => {
+              const map = new Map<string, Order>();
+              localOrders.forEach((lo) => map.set(lo.id, lo));
+              remoteOrders.forEach((ro: Order) => {
+                const local = map.get(ro.id);
+                if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
+                  const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
+                  map.set(ro.id, merged);
+                  syncOrderToSupabase(merged);
+                } else {
+                  map.set(ro.id, ro);
+                }
+              });
+              return Array.from(map.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+            });
+          }
+        });
 
-          return Array.from(map.values()).sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
+        fetchProductsFromSupabase().then((remoteProducts) => {
+          if (isMounted && remoteProducts && remoteProducts.length > 0) {
+            setProducts((localProds) => {
+              const map = new Map<string, Product>();
+              localProds.forEach((p) => map.set(p.id, p));
+              remoteProducts.forEach((rp: Product) => map.set(rp.id, rp));
+              return Array.from(map.values());
+            });
+          }
         });
       }
-    });
+    };
 
-    fetchProductsFromSupabase().then((remoteProducts) => {
-      if (isMounted && remoteProducts && remoteProducts.length > 0) {
-        setProducts((localProds) => {
-          const map = new Map<string, Product>();
-          localProds.forEach((p) => map.set(p.id, p));
-          remoteProducts.forEach((rp: Product) => map.set(rp.id, rp));
-          return Array.from(map.values());
-        });
-      }
-    });
+    // Initial load
+    loadData();
+
+    // 1. Supabase Realtime Subscription
+    let channel: any = null;
+    if (isSupabaseConfigured && supabase) {
+      channel = supabase
+        .channel("pos-ledger-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+          loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+          loadData();
+        })
+        .subscribe();
+    }
+
+    // 2. Periodic 5-Second Live Background Polling as Backup
+    const interval = setInterval(() => {
+      loadData();
+    }, 5000);
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
