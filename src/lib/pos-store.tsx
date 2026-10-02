@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock-data";
-import { syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, fetchProductsFromSupabase, isSupabaseConfigured } from "./supabase";
+import { supabase, syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, fetchProductsFromSupabase, isSupabaseConfigured } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 
 interface Store {
