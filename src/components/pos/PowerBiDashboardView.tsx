@@ -230,9 +230,10 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
   }, [orders, orderTypeSlicer, paymentSlicer, crossPayment, crossDish]);
 
   // Aggregate Metrics based on Slicers & Cross-Filters
-  const liveNetSales = paidOrders.reduce((s, o) => s + o.total, 0);
-  const liveGrossSales = paidOrders.reduce((s, o) => s + o.subtotal, 0);
-  const liveTax = paidOrders.reduce((s, o) => s + o.tax, 0);
+  const liveNetSales = paidOrders.reduce((s, o) => s + (o.total || 0), 0);
+  const liveGrossSales = paidOrders.reduce((s, o) => s + (o.subtotal || 0), 0);
+  const liveTax = paidOrders.reduce((s, o) => s + (o.tax || 0), 0);
+  const liveOrderCount = paidOrders.length;
 
   const baseTodaySales = 34800;
   const baseGrossSales = 33142;
@@ -256,27 +257,29 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
     return mult;
   }, [orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDate, crossDish]);
 
-  const displayNetSales = liveNetSales > 0 ? liveNetSales : Math.round(baseTodaySales * slicerMultiplier);
-  const displayGrossSales = liveGrossSales > 0 ? liveGrossSales : Math.round(baseGrossSales * slicerMultiplier);
-  const displayTax = liveTax > 0 ? liveTax : Math.round(baseTax * slicerMultiplier);
-  const displayOrderCount = paidOrders.length > 0 ? paidOrders.length : Math.max(1, Math.round(baseOrdersCount * slicerMultiplier));
+  const displayNetSales = Math.round((baseTodaySales + liveNetSales) * slicerMultiplier);
+  const displayGrossSales = Math.round((baseGrossSales + liveGrossSales) * slicerMultiplier);
+  const displayTax = Math.round((baseTax + liveTax) * slicerMultiplier);
+  const displayOrderCount = Math.max(1, Math.round((baseOrdersCount + liveOrderCount) * slicerMultiplier));
   const displayAov = displayOrderCount > 0 ? Math.round(displayNetSales / displayOrderCount) : 561;
 
   // UPI vs Cash Split with Cross-Filtering
-  const liveUpi = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
-  const liveCash = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
+  const liveUpi = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + (o.total || 0), 0);
+  const liveCash = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + (o.total || 0), 0);
   
   const displayUpi = crossPayment === "cash" 
     ? 0 
-    : (liveUpi > 0 ? liveUpi : Math.round(22400 * (paymentSlicer === "cash" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1)));
+    : Math.round((22400 + liveUpi) * (paymentSlicer === "cash" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1));
     
   const displayCash = crossPayment === "upi" 
     ? 0 
-    : (liveCash > 0 ? liveCash : Math.round(12400 * (paymentSlicer === "upi" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1)));
+    : Math.round((12400 + liveCash) * (paymentSlicer === "upi" ? 0 : 1) * (crossHour ? 0.16 : 1) * (crossDish ? 0.28 : 1));
 
-  // Filtered Daily Trend Chart (dynamically updated from live paid orders)
-  const filteredDailyTrend = useMemo(() => {
+  // Dynamic 7-day trend date list generator ending Today
+  const dynamicDailyTrend = useMemo(() => {
+    const today = new Date();
     const dateMap: Record<string, number> = {};
+    
     (paidOrders || []).forEach(o => {
       if (!o || !o.createdAt) return;
       const d = new Date(o.createdAt);
@@ -284,8 +287,19 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
       dateMap[dateStr] = (dateMap[dateStr] || 0) + o.total;
     });
 
-    return RAW_DAILY_TREND.map(d => {
-      let val = dateMap[d.date] !== undefined ? dateMap[d.date] : d.sales;
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const dateStr = `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`;
+      const baseObj = RAW_DAILY_TREND[6 - i] || RAW_DAILY_TREND[6];
+      const isToday = i === 0;
+
+      let val = (dateMap[dateStr] || 0) + (baseObj ? baseObj.sales : 18000);
+      if (isToday && liveNetSales > 0) {
+        val = baseTodaySales + liveNetSales;
+      }
+
       if (orderTypeSlicer === "dine-in") val = Math.round(val * 0.68);
       if (orderTypeSlicer === "takeaway") val = Math.round(val * 0.32);
       if (paymentSlicer === "upi" || crossPayment === "upi") val = Math.round(val * 0.64);
@@ -293,11 +307,19 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
 
       if (crossHour) val *= 0.16;
       if (crossDish) val *= 0.28;
-      if (crossDate && d.date !== crossDate) val *= 0.3;
+      const displayLabel = isToday ? `${dateStr} (Today)` : dateStr;
+      if (crossDate && displayLabel !== crossDate && dateStr !== crossDate) val *= 0.3;
 
-      return { ...d, sales: Math.round(val) };
-    });
-  }, [paidOrders, orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDish, crossDate]);
+      result.push({
+        ...baseObj,
+        date: displayLabel,
+        sales: Math.round(val)
+      });
+    }
+    return result;
+  }, [paidOrders, liveNetSales, orderTypeSlicer, paymentSlicer, crossPayment, crossHour, crossDish, crossDate]);
+
+  const filteredDailyTrend = dynamicDailyTrend;
 
   // Filtered Hourly Data & Peak Hour (dynamically updated from live paid orders)
   const filteredHourlyData = useMemo(() => {
@@ -311,7 +333,8 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
     });
 
     return RAW_HOURLY_DATA.map(d => {
-      let val = hourlyMap[d.hour] !== undefined && hourlyMap[d.hour] > 0 ? hourlyMap[d.hour] : d.sales;
+      const addedSales = hourlyMap[d.hour] || 0;
+      let val = d.sales + addedSales;
       if (orderTypeSlicer === "dine-in") val = Math.round(val * 0.68);
       if (orderTypeSlicer === "takeaway") val = Math.round(val * 0.32);
       if (paymentSlicer === "upi" || crossPayment === "upi") val = Math.round(val * 0.64);
@@ -348,8 +371,9 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
       .filter(p => p && (!crossDish || p.name.toLowerCase().includes(crossDish.toLowerCase())))
       .map(p => {
         const live = liveSoldMap[p.id] || liveSoldMap[p.name];
-        const unitsSold = live ? live.qty : (p.soldToday ?? 12);
-        const revenue = live ? live.rev : Math.round(unitsSold * p.price);
+        const baseQty = p.soldToday ?? 12;
+        const unitsSold = baseQty + (live ? live.qty : 0);
+        const revenue = Math.round(unitsSold * p.price);
         return {
           ...p,
           unitsSold,
