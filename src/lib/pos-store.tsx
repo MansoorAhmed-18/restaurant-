@@ -43,11 +43,19 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [tableId, setTableId] = useState<string | undefined>();
   const [customerId, setCustomerId] = useState<string | undefined>();
 
-  // Hydrate state from localStorage or mock defaults
-  const [orders, setOrders] = useState<Order[]>(() => loadStored("res_pos_orders", mock.orders));
-  const [tables, setTables] = useState<RestaurantTable[]>(() => loadStored("res_pos_tables", mock.tables));
-  const [products, setProducts] = useState<Product[]>(() => loadStored("res_pos_products", mock.products));
-  const [customers, setCustomers] = useState<Customer[]>(() => loadStored("res_pos_customers", mock.customers));
+  // Hydrate initial state safely for SSR & Client
+  const [orders, setOrders] = useState<Order[]>(mock.orders);
+  const [tables, setTables] = useState<RestaurantTable[]>(mock.tables);
+  const [products, setProducts] = useState<Product[]>(mock.products);
+  const [customers, setCustomers] = useState<Customer[]>(mock.customers);
+
+  // Client-side hydration from localStorage after mount
+  useEffect(() => {
+    setOrders(loadStored("res_pos_orders", mock.orders));
+    setTables(loadStored("res_pos_tables", mock.tables));
+    setProducts(loadStored("res_pos_products", mock.products));
+    setCustomers(loadStored("res_pos_customers", mock.customers));
+  }, []);
 
   // Sync state changes to localStorage
   useEffect(() => {
@@ -81,11 +89,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
     const loadData = () => {
       if (isSupabaseConfigured) {
         fetchOrdersFromSupabase().then((remoteOrders) => {
-          if (isMounted && remoteOrders && remoteOrders.length > 0) {
+          if (isMounted && remoteOrders && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
             setOrders((localOrders) => {
               const map = new Map<string, Order>();
-              localOrders.forEach((lo) => map.set(lo.id, lo));
+              (localOrders || []).forEach((lo) => lo && lo.id && map.set(lo.id, lo));
               remoteOrders.forEach((ro: Order) => {
+                if (!ro || !ro.id) return;
                 const local = map.get(ro.id);
                 if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
                   const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
@@ -95,19 +104,21 @@ export function PosProvider({ children }: { children: ReactNode }) {
                   map.set(ro.id, ro);
                 }
               });
-              return Array.from(map.values()).sort(
-                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              );
+              return Array.from(map.values()).sort((a, b) => {
+                const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() || 0 : 0;
+                const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() || 0 : 0;
+                return timeB - timeA;
+              });
             });
           }
         });
 
         fetchProductsFromSupabase().then((remoteProducts) => {
-          if (isMounted && remoteProducts && remoteProducts.length > 0) {
+          if (isMounted && remoteProducts && Array.isArray(remoteProducts) && remoteProducts.length > 0) {
             setProducts((localProds) => {
               const map = new Map<string, Product>();
-              localProds.forEach((p) => map.set(p.id, p));
-              remoteProducts.forEach((rp: Product) => map.set(rp.id, rp));
+              (localProds || []).forEach((p) => p && p.id && map.set(p.id, p));
+              remoteProducts.forEach((rp: Product) => rp && rp.id && map.set(rp.id, rp));
               return Array.from(map.values());
             });
           }

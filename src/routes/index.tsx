@@ -71,18 +71,21 @@ export function Dashboard() {
   };
 
   // Paid orders calculation from live store
-  const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
+  const safeOrders = orders || [];
+  const safeProducts = products || [];
+
+  const paidOrders = safeOrders.filter((o) => o?.paymentStatus === "paid");
   
-  const liveNetSales = paidOrders.reduce((s, o) => s + o.total, 0);
-  const liveCash = paidOrders.filter(o => o.paymentMethod === "cash").reduce((s, o) => s + o.total, 0);
-  const liveUpi = paidOrders.filter(o => o.paymentMethod === "upi").reduce((s, o) => s + o.total, 0);
+  const liveNetSales = paidOrders.reduce((s, o) => s + (o?.total || 0), 0);
+  const liveCash = paidOrders.filter(o => o?.paymentMethod === "cash").reduce((s, o) => s + (o?.total || 0), 0);
+  const liveUpi = paidOrders.filter(o => o?.paymentMethod === "upi").reduce((s, o) => s + (o?.total || 0), 0);
 
   const todaySales = liveNetSales > 0 ? liveNetSales : 34800;
   const cashCollection = liveCash > 0 ? liveCash : 12400;
   const upiCollection = liveUpi > 0 ? liveUpi : 22400;
 
-  const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "preparing");
-  const totalOrdersCount = orders.length;
+  const pendingOrders = safeOrders.filter((o) => o?.status === "pending" || o?.status === "preparing");
+  const totalOrdersCount = safeOrders.length;
   const avgOrderValue = paidOrders.length > 0 ? Math.round(liveNetSales / paidOrders.length) : 642;
   const monthlyRevenue = 284500 + todaySales;
 
@@ -92,27 +95,28 @@ export function Dashboard() {
 
   // Top Dishes & Category Breakdown
   const topDishes = useMemo(() => {
-    return [...products]
+    return [...safeProducts]
       .map(p => ({
         ...p,
-        unitsSold: p.soldToday ?? 12,
-        revenue: (p.soldToday ?? 12) * p.price
+        unitsSold: p?.soldToday ?? 12,
+        revenue: (p?.soldToday ?? 12) * (p?.price || 0)
       }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [products]);
+  }, [safeProducts]);
 
   const categoryRevenue = useMemo(() => {
     const catsMap: Record<string, { name: string; revenue: number; itemsSold: number }> = {};
-    products.forEach(p => {
+    safeProducts.forEach(p => {
+      if (!p) return;
       const catName = categories.data?.find(c => c.id === p.categoryId)?.name || "Main Course";
       if (!catsMap[catName]) catsMap[catName] = { name: catName, revenue: 0, itemsSold: 0 };
       const sold = p.soldToday ?? 10;
-      catsMap[catName].revenue += sold * p.price;
+      catsMap[catName].revenue += sold * (p.price || 0);
       catsMap[catName].itemsSold += sold;
     });
     return Object.values(catsMap).sort((a, b) => b.revenue - a.revenue);
-  }, [products, categories.data]);
+  }, [safeProducts, categories.data]);
 
   // Hourly peak calculation
   const hourlyDataWithPeaks = useMemo(() => {
