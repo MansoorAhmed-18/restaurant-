@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { customers } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
 
@@ -50,7 +50,7 @@ function Orders() {
                 <tr key={o.id} className="border-b last:border-0 hover:bg-muted/50">
                   <td className="p-4"><div className="font-extrabold">#{o.number}</div><div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div></td>
                   <td className="p-4">{o.tableId ? `Table ${o.tableId.slice(1)}` : "Takeaway"}</td>
-                  <td className="p-4">{o.items.reduce((s, i) => s + i.qty, 0)}</td>
+                  <td className="p-4">{consolidateOrderItems(o.items).reduce((s, i) => s + i.qty, 0)}</td>
                   <td className="p-4 font-bold">{inr(o.total)}</td>
                   <td className="p-4"><StatusBadge status={o.status} /></td>
                   <td className="p-4"><StatusBadge status={o.paymentStatus} /></td>
@@ -70,7 +70,7 @@ function Orders() {
                 <div className="flex gap-2"><StatusBadge status={sel.status} /><StatusBadge status={sel.paymentStatus} /></div>
                 <div className="text-sm text-muted-foreground">{sel.tableId ? `Table ${sel.tableId.slice(1)}` : "Takeaway"} · {customers.find((c) => c.id === sel.customerId)?.name ?? "Walk-in"}</div>
                 <ul className="space-y-2 border-y py-3 text-sm">
-                  {sel.items.map((i) => <li key={i.productId} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
+                  {consolidateOrderItems(sel.items).map((i, idx) => <li key={`${i.productId || i.name}-${idx}`} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
                 </ul>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{inr(sel.subtotal)}</span></div>

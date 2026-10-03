@@ -8,6 +8,7 @@ import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
+import { consolidateOrderItems } from "@/lib/utils";
 
 export const Route = createFileRoute("/invoice/$orderId")({
   head: () => meta("Invoice", "Printable bill receipt for a paid restaurant order."),
@@ -115,8 +116,8 @@ function Invoice() {
             </tr>
           </thead>
           <tbody>
-            {o.items.map((i) => (
-              <tr key={i.productId}>
+            {consolidateOrderItems(o.items).map((i, idx) => (
+              <tr key={`${i.productId || i.name}-${idx}`}>
                 <td className="py-1">
                   {i.name}
                   <div className="text-xs text-muted-foreground">{inr(i.price)}</div>

@@ -1,4 +1,5 @@
 import type { Order } from "./types";
+import { consolidateOrderItems } from "./utils";
 
 export function buildWhatsAppBillText(order: Order, customerName?: string): string {
   const dateStr = new Date(order.createdAt).toLocaleString("en-IN", {
@@ -6,7 +7,8 @@ export function buildWhatsAppBillText(order: Order, customerName?: string): stri
     timeStyle: "short",
   });
 
-  const itemsText = (order.items || [])
+  const consolidated = consolidateOrderItems(order.items || []);
+  const itemsText = consolidated
     .map((i) => `  • ${i.name} x${i.qty} — ₹${i.price * i.qty}`)
     .join("\n");
 

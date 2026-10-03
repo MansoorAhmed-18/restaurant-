@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { consolidateOrderItems } from "./utils";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -101,7 +102,8 @@ export async function syncOrderToSupabase(order: any) {
     if (order.items && order.items.length > 0) {
       await supabase.from("order_items").delete().eq("order_id", order.id);
 
-      const lineItems = order.items.map((item: any) => ({
+      const consolidatedItems = consolidateOrderItems(order.items);
+      const lineItems = consolidatedItems.map((item: any) => ({
         order_id: order.id,
         product_id: item.productId || null,
         name: item.name,
@@ -138,26 +140,30 @@ export async function fetchOrdersFromSupabase() {
       return null;
     }
 
-    return ordersData.map((o: any) => ({
-      id: o.id,
-      number: o.number,
-      tableId: o.table_id || undefined,
-      customerId: o.customer_id || undefined,
-      subtotal: Number(o.subtotal || 0),
-      tax: Number(o.tax || 0),
-      total: Number(o.total || 0),
-      status: o.status || "pending",
-      paymentStatus: o.payment_status || "unpaid",
-      paymentMethod: o.payment_method || undefined,
-      type: o.order_type || (o.table_id ? "dine-in" : "takeaway"),
-      createdAt: o.created_at || new Date().toISOString(),
-      items: (o.order_items || []).map((item: any) => ({
+    return ordersData.map((o: any) => {
+      const rawItems = (o.order_items || []).map((item: any) => ({
         productId: item.product_id || "",
         name: item.name || "Item",
         price: Number(item.price || 0),
         qty: Number(item.qty || 1),
-      })),
-    }));
+      }));
+
+      return {
+        id: o.id,
+        number: o.number,
+        tableId: o.table_id || undefined,
+        customerId: o.customer_id || undefined,
+        subtotal: Number(o.subtotal || 0),
+        tax: Number(o.tax || 0),
+        total: Number(o.total || 0),
+        status: o.status || "pending",
+        paymentStatus: o.payment_status || "unpaid",
+        paymentMethod: o.payment_method || undefined,
+        type: o.order_type || (o.table_id ? "dine-in" : "takeaway"),
+        createdAt: o.created_at || new Date().toISOString(),
+        items: consolidateOrderItems(rawItems),
+      };
+    });
   } catch (err) {
     console.error("Fetch orders exception:", err);
     return null;

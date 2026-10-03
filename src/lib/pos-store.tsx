@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import * as mock from "./mock-data";
 import { supabase, syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, fetchProductsFromSupabase, isSupabaseConfigured } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
+import { consolidateOrderItems } from "./utils";
 
 interface Store {
   cart: OrderItem[];
@@ -158,9 +159,10 @@ export function PosProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const totals = useMemo(() => {
-    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const consolidated = consolidateOrderItems(cart);
+    const subtotal = consolidated.reduce((s, i) => s + i.price * i.qty, 0);
     const tax = 0; // Tax removed from subtotal
-    return { subtotal, tax, total: subtotal, count: cart.reduce((s, i) => s + i.qty, 0) };
+    return { subtotal, tax, total: subtotal, count: consolidated.reduce((s, i) => s + i.qty, 0) };
   }, [cart]);
 
   const value: Store = {
@@ -185,8 +187,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
       return newCust;
     },
     add: (p) => setCart((c) => {
-      const f = c.find((i) => i.productId === p.id);
-      return f ? c.map((i) => (i.productId === p.id ? { ...i, qty: i.qty + 1 } : i))
+      const f = c.find((i) => i.productId === p.id || i.name.toLowerCase() === p.name.toLowerCase());
+      return f 
+        ? c.map((i) => ((i.productId === p.id || i.name.toLowerCase() === p.name.toLowerCase()) ? { ...i, qty: i.qty + 1 } : i))
         : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1 }];
     }),
     setQty: (id, qty) => setCart((c) => qty <= 0 ? c.filter((i) => i.productId !== id) : c.map((i) => (i.productId === id ? { ...i, qty } : i))),
@@ -196,9 +199,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     placeOrder: () => {
       if (!cart.length) return null;
+      const consolidatedItems = consolidateOrderItems(cart);
+      const subtotal = consolidatedItems.reduce((s, i) => s + i.price * i.qty, 0);
+      const tax = 0;
+      const total = subtotal + tax;
       const number = Math.max(...orders.map((o) => o.number), 1000) + 1;
       const o: Order = {
-        id: `o${number}`, number, items: cart, ...totals, tableId, customerId, status: "pending", paymentStatus: "unpaid",
+        id: `o${number}`, number, items: consolidatedItems, subtotal, tax, total, tableId, customerId, status: "pending", paymentStatus: "unpaid",
         createdAt: new Date().toISOString(), type: tableId ? "dine-in" : "takeaway",
       };
       setOrders((os) => [o, ...os]);
