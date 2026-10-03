@@ -80,14 +80,14 @@ export function Dashboard() {
   const liveCash = paidOrders.filter(o => o?.paymentMethod === "cash").reduce((s, o) => s + (o?.total || 0), 0);
   const liveUpi = paidOrders.filter(o => o?.paymentMethod === "upi").reduce((s, o) => s + (o?.total || 0), 0);
 
-  const todaySales = liveNetSales > 0 ? liveNetSales : 34800;
-  const cashCollection = liveCash > 0 ? liveCash : 12400;
-  const upiCollection = liveUpi > 0 ? liveUpi : 22400;
+  const todaySales = liveNetSales;
+  const cashCollection = liveCash;
+  const upiCollection = liveUpi;
 
   const pendingOrders = safeOrders.filter((o) => o?.status === "pending" || o?.status === "preparing");
-  const totalOrdersCount = safeOrders.length;
-  const avgOrderValue = paidOrders.length > 0 ? Math.round(liveNetSales / paidOrders.length) : 642;
-  const monthlyRevenue = 284500 + todaySales;
+  const totalOrdersCount = paidOrders.length;
+  const avgOrderValue = paidOrders.length > 0 ? Math.round(liveNetSales / paidOrders.length) : 0;
+  const monthlyRevenue = todaySales;
 
   // Target Sales Setup
   const dailyTarget = 40000;
