@@ -327,8 +327,8 @@ export function Pos() {
 
       {/* Quick Pay Modal (Cash vs UPI ONLY) */}
       {payModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-2xl border bg-card p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h3 className="font-extrabold text-lg">Collect Payment & Print Bill</h3>
