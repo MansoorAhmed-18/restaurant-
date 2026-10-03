@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { 
   Minus, Plus, Search, ShoppingCart, Trash2, Printer, 
-  QrCode, Banknote, CheckCircle2, X, User, UserPlus 
+  QrCode, Banknote, CheckCircle2, X, User, UserPlus, MessageSquare, Send 
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -13,6 +13,7 @@ import { usePos } from "@/lib/pos-store";
 import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import type { PaymentMethod } from "@/lib/types";
+import { sendWhatsAppBill } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/pos")({
   head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders, customer details & thermal receipts."),
@@ -30,11 +31,13 @@ export function Pos() {
   // Quick Customer Input Modal / Toggle State
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
 
   // Quick Pay Modal State
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("upi");
   const [cashTendered, setCashTendered] = useState<string>("");
+  const [sendWhatsAppOnPay, setSendWhatsAppOnPay] = useState(true);
 
   const items = useMemo(() => {
     return pos.products.filter((p) => {
@@ -53,7 +56,7 @@ export function Pos() {
       toast.error("Please enter customer name.");
       return;
     }
-    const newC = pos.addCustomer({ name: custName });
+    const newC = pos.addCustomer({ name: custName, phone: custPhone });
     toast.success(`Customer ${newC.name} saved & linked to bill!`);
     setShowAddCustomer(false);
     setCustName("");
@@ -70,19 +73,25 @@ export function Pos() {
     }
   };
 
-  const handleCompletePayment = () => {
+  const selectedCustomer = pos.customers.find((c) => c.id === pos.customerId);
+
+  const handleCompletePayment = (shouldSendWhatsApp: boolean = false) => {
     const o = pos.placeOrder();
     if (!o) return;
     pos.payOrder(o.id, selectedMethod);
     toast.success(`Bill #${o.number} paid via ${selectedMethod.toUpperCase()}!`);
     setPayModalOpen(false);
+
+    const targetPhone = custPhone || selectedCustomer?.phone || "";
+    if (shouldSendWhatsApp || sendWhatsAppOnPay) {
+      sendWhatsAppBill(o, targetPhone, selectedCustomer?.name || custName);
+    }
+
     nav({ to: "/invoice/$orderId", params: { orderId: o.id } });
   };
 
   const cashGivenNum = parseFloat(cashTendered) || 0;
   const changeDue = Math.max(0, cashGivenNum - pos.totals.total);
-
-  const selectedCustomer = pos.customers.find((c) => c.id === pos.customerId);
 
   return (
     <AppShell>
@@ -397,13 +406,36 @@ export function Pos() {
               </div>
             )}
 
-            {/* Confirm Payment Button */}
-            <button
-              onClick={handleCompletePayment}
-              className="w-full h-12 rounded-xl bg-emerald-600 text-sm font-extrabold text-white shadow-[var(--shadow-lift)] hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 className="size-5" /> Record Payment & Print Thermal Bill
-            </button>
+            {/* WhatsApp Bill Sharing Box */}
+            <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/30 p-3 space-y-2">
+              <label className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <MessageSquare className="size-3.5" /> Send Digital Bill to Customer WhatsApp
+              </label>
+              <input 
+                type="tel" 
+                value={custPhone} 
+                onChange={(e) => setCustPhone(e.target.value)} 
+                placeholder="10-digit WhatsApp Number (e.g. 9876543210)..."
+                className="h-9 w-full rounded-lg border bg-background px-3 text-xs font-bold font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Confirm Payment Buttons */}
+            <div className="space-y-2">
+              <button
+                onClick={() => handleCompletePayment(true)}
+                className="w-full h-11 rounded-xl bg-emerald-600 text-xs font-extrabold text-white shadow hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="size-4 text-emerald-200" /> Pay ({selectedMethod.toUpperCase()}) & Send WhatsApp Bill 💬
+              </button>
+
+              <button
+                onClick={() => handleCompletePayment(false)}
+                className="w-full h-10 rounded-xl border bg-card text-xs font-bold text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="size-4 text-emerald-600" /> Record Payment Only
+              </button>
+            </div>
           </div>
         </div>
       )}

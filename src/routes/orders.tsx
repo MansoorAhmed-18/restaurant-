@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { MessageSquare } from "lucide-react";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -8,6 +9,7 @@ import { usePos } from "@/lib/pos-store";
 import { customers } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
+import { sendWhatsAppBill } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/orders")({
   head: () => meta("Orders", "Active, completed and cancelled restaurant orders with details."),
@@ -78,7 +80,22 @@ function Orders() {
                 <div className="grid gap-2">
                   {sel.status === "pending" && <button onClick={() => setOrderStatus(sel.id, "preparing")} className="h-10 rounded-xl bg-info text-sm font-bold text-primary-foreground">Mark preparing</button>}
                   {sel.paymentStatus === "unpaid" && <Link to="/payments" search={{ order: sel.id }} className="grid h-10 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">Collect payment</Link>}
-                  {sel.paymentStatus === "paid" && <Link to="/invoice/$orderId" params={{ orderId: sel.id }} className="grid h-10 place-items-center rounded-xl border-2 border-primary text-sm font-bold text-primary">View invoice</Link>}
+                  {sel.paymentStatus === "paid" && (
+                    <div className="space-y-2">
+                      <Link to="/invoice/$orderId" params={{ orderId: sel.id }} className="grid h-10 place-items-center rounded-xl border-2 border-primary text-sm font-bold text-primary">
+                        View Invoice & Receipt
+                      </Link>
+                      <button
+                        onClick={() => {
+                          const cust = customers.find((c) => c.id === sel.customerId);
+                          sendWhatsAppBill(sel, cust?.phone, cust?.name);
+                        }}
+                        className="w-full h-10 rounded-xl bg-emerald-600 text-xs font-extrabold text-white flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors shadow"
+                      >
+                        <MessageSquare className="size-4" /> Send Bill via WhatsApp 💬
+                      </button>
+                    </div>
+                  )}
                   {(sel.status === "pending" || sel.status === "preparing") && <button onClick={() => setOrderStatus(sel.id, "cancelled")} className="h-10 rounded-xl bg-danger-soft text-sm font-bold text-destructive">Cancel order</button>}
                 </div>
               </div>
