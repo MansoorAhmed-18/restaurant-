@@ -14,6 +14,7 @@ interface Store {
   add: (p: Product) => void;
   setQty: (productId: string, qty: number) => void;
   clearCart: () => void;
+  clearAllOrders: () => void;
   totals: { subtotal: number; tax: number; total: number; count: number };
   orders: Order[];
   tables: RestaurantTable[];
@@ -44,15 +45,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [tableId, setTableId] = useState<string | undefined>();
   const [customerId, setCustomerId] = useState<string | undefined>();
 
-  // Hydrate initial state safely for SSR & Client
-  const [orders, setOrders] = useState<Order[]>(mock.orders);
+  // Hydrate initial state safely for SSR & Client (Start clean with 0 orders)
+  const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>(mock.tables);
   const [products, setProducts] = useState<Product[]>(mock.products);
   const [customers, setCustomers] = useState<Customer[]>(mock.customers);
 
   // Client-side hydration from localStorage after mount
   useEffect(() => {
-    setOrders(loadStored("res_pos_orders", mock.orders));
+    setOrders(loadStored("res_pos_orders", []));
     setTables(loadStored("res_pos_tables", mock.tables));
     setProducts(loadStored("res_pos_products", mock.products));
     setCustomers(loadStored("res_pos_customers", mock.customers));
@@ -196,6 +197,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     clearCart: () => {
       setCart([]);
       setCustomerId(undefined);
+    },
+    clearAllOrders: () => {
+      setOrders([]);
+      try {
+        localStorage.removeItem("res_pos_orders");
+      } catch (e) {
+        console.error("Failed to clear local orders:", e);
+      }
     },
     placeOrder: () => {
       if (!cart.length) return null;

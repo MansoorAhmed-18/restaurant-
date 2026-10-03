@@ -4,7 +4,7 @@ import {
   ExternalLink, Layers, PieChart as PieIcon, TrendingUp, Clock, Flame, 
   CheckCircle2, QrCode, Banknote, ShieldCheck, ChevronRight, Copy, Check,
   Search, SlidersHorizontal, Calendar, Award, Sparkles, Code2, Download, Table,
-  FileSpreadsheet, Hash, Percent, DollarSign, Users, ChevronDown, ListFilter, Eye
+  FileSpreadsheet, Hash, Percent, DollarSign, Users, ChevronDown, ListFilter, Eye, Trash2
 } from "lucide-react";
 import { 
   Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
@@ -139,7 +139,7 @@ export const FABRIC_DIRECT_URL = "https://app.fabric.microsoft.com/groups/me/rep
 export const FABRIC_EMBED_URL = "https://app.powerbi.com/reportEmbed?reportId=38c5dad2-f128-482a-a382-529715d21d5e&autoAuth=true";
 
 export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTabsHeader = true }: PowerBiDashboardProps) {
-  const { orders, products, customers } = usePos();
+  const { orders, products, customers, clearAllOrders } = usePos();
   
   // Power BI Controls State - Default to Executive Overview (Dynamic Real-time Canvas)
   const [activePage, setActivePage] = useState<"overview" | "hourly" | "dishes" | "payments" | "tables-grid" | "live-embed" | "dax">("overview");
@@ -498,6 +498,18 @@ export function PowerBiDashboardView({ embeddedUrl: initialEmbedUrl = "", showTa
             >
               <RefreshCw className={`size-3.5 text-[#F2C811] ${isRefreshing ? "animate-spin" : ""}`} />
               Refresh Data
+            </button>
+
+            <button
+              onClick={() => {
+                if (confirm("Are you sure you want to reset all dashboard data to 0?")) {
+                  clearAllOrders();
+                  toast.success("All dashboard overview metrics reset to 0!");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-all"
+            >
+              <Trash2 className="size-3.5" /> Reset Data to 0
             </button>
 
             <button

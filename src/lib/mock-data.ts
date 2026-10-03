@@ -62,18 +62,7 @@ function mk(n: number, items: [string, number][], extra: Partial<Order>): Order 
   };
 }
 
-export const orders: Order[] = [
-  mk(1042, [["p4", 2], ["p10", 3], ["p13", 2]], { tableId: "t2", customerId: "u1", status: "preparing", paymentStatus: "unpaid", paymentMethod: undefined }),
-  mk(1041, [["p7", 1], ["p11", 2], ["p14", 2]], { tableId: "t4", customerId: "u4", status: "pending", paymentStatus: "unpaid", paymentMethod: undefined }),
-  mk(1040, [["p2", 1], ["p5", 1]], { tableId: "t8", status: "pending", paymentStatus: "unpaid", paymentMethod: undefined }),
-  mk(1039, [["p1", 1], ["p8", 1], ["p12", 4]], { tableId: "t10", customerId: "u2", status: "preparing", paymentStatus: "unpaid", paymentMethod: undefined }),
-  mk(1038, [["p4", 1], ["p16", 2]], { customerId: "u3", type: "takeaway", paymentMethod: "cash" }),
-  mk(1037, [["p6", 2], ["p15", 2]], { customerId: "u6", paymentMethod: "upi" }),
-  mk(1036, [["p9", 1], ["p10", 2]], { status: "cancelled", paymentStatus: "refunded", paymentMethod: "upi" }),
-  mk(1035, [["p7", 2], ["p11", 4], ["p17", 2]], { customerId: "u4" }),
-  mk(1034, [["p3", 2], ["p13", 1]], { customerId: "u5", type: "takeaway", paymentMethod: "cash" }),
-  mk(1033, [["p2", 2], ["p14", 3]], { customerId: "u1", paymentMethod: "upi" }),
-];
+export const orders: Order[] = [];
 
 export const hourlySales = [
   { hour: "11a", sales: 2400 }, { hour: "12p", sales: 6800 }, { hour: "1p", sales: 11200 }, { hour: "2p", sales: 8900 },
