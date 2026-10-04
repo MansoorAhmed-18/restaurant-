@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Banknote, CreditCard, Loader2, QrCode } from "lucide-react";
+import { Banknote, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
@@ -48,7 +48,7 @@ function Payments() {
     }, 1200);
   };
 
-  const methods = [{ id: "upi", label: "UPI / QR", icon: QrCode }, { id: "card", label: "Card", icon: CreditCard }, { id: "cash", label: "Cash", icon: Banknote }] as const;
+  const methods = [{ id: "upi", label: "UPI / QR", icon: QrCode }, { id: "cash", label: "Cash", icon: Banknote }] as const;
 
   return (
     <AppShell>
@@ -72,7 +72,7 @@ function Payments() {
             <>
               <div className="text-sm text-muted-foreground">Collecting for order #{sel.number}</div>
               <div className="text-4xl font-extrabold">{inr(sel.total)}</div>
-              <div className="mt-5 grid grid-cols-3 gap-2">
+              <div className="mt-5 grid grid-cols-2 gap-2">
                 {methods.map(({ id, label, icon: Icon }) => (
                   <button key={id} onClick={() => setMethod(id)} className={cn("flex flex-col items-center gap-1 rounded-xl border-2 p-3 text-xs font-bold", method === id ? "border-primary bg-primary-soft text-accent-foreground" : "")}>
                     <Icon className="size-5" />{label}
@@ -86,7 +86,6 @@ function Payments() {
                   <div className="text-xs text-muted-foreground">spiceroute@upi · GPay · PhonePe · Paytm</div>
                 </div>
               )}
-              {method === "card" && <div className="mt-5 rounded-2xl bg-muted p-5 text-center text-sm text-muted-foreground">Tap, insert or swipe card on the terminal.</div>}
               {method === "cash" && <div className="mt-5 rounded-2xl bg-muted p-5 text-center text-sm text-muted-foreground">Collect {inr(sel.total)} in cash and confirm.</div>}
               <button disabled={busy} onClick={confirm} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-success font-bold text-primary-foreground disabled:opacity-70">
                 {busy && <Loader2 className="size-4 animate-spin" />}{busy ? "Confirming…" : "Mark as paid"}
