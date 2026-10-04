@@ -18,6 +18,8 @@ export const Route = createFileRoute("/invoice/$orderId")({
 function Invoice() {
   const { orderId } = Route.useParams();
   const { orders } = usePos();
+  const [phoneInput, setPhoneInput] = useState("");
+
   const o = orders.find((x) => x.id === orderId);
 
   if (!o) {
@@ -35,8 +37,6 @@ function Invoice() {
       </AppShell>
     );
   }
-
-  const [phoneInput, setPhoneInput] = useState("");
 
   const handleSendWhatsApp = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
