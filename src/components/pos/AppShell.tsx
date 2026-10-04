@@ -1,9 +1,8 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { 
-  BarChart3, ClipboardList, CreditCard, Database, 
-  LayoutDashboard, LogOut, Menu, ShoppingBag, UtensilsCrossed, 
-  Users, Armchair, X 
+  ClipboardList, CreditCard, LayoutDashboard, LogOut, Menu, 
+  ShoppingBag, UtensilsCrossed, Armchair, X 
 } from "lucide-react";
 import { getActiveStaff, getStaffInitials, type StaffUser } from "@/lib/auth";
 
@@ -13,9 +12,7 @@ const nav = [
   { to: "/tables", label: "Tables", icon: Armchair },
   { to: "/orders", label: "Orders", icon: ClipboardList },
   { to: "/menu", label: "Menu", icon: UtensilsCrossed },
-  { to: "/customers", label: "Customers", icon: Users },
   { to: "/payments", label: "Payments", icon: CreditCard },
-  { to: "/powerbi", label: "Power BI Analytics", icon: BarChart3 },
 ] as const;
 
 export function Logo() {
@@ -97,7 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           { to: "/pos", label: "POS Bill", icon: ShoppingBag },
           { to: "/orders", label: "Orders", icon: ClipboardList },
           { to: "/tables", label: "Tables", icon: Armchair },
-          { to: "/powerbi", label: "Power BI", icon: BarChart3 },
+          { to: "/menu", label: "Menu", icon: UtensilsCrossed },
           { to: "/", label: "Home", icon: LayoutDashboard },
         ].map(({ to, label, icon: Icon }) => (
           <Link

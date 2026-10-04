@@ -10,30 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PosRouteImport } from './routes/pos'
-import { Route as PowerbiRouteImport } from './routes/powerbi'
 import { Route as TablesRouteImport } from './routes/tables'
 import { Route as InvoiceOrderIdRouteImport } from './routes/invoice.$orderId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomersRoute = CustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,11 +48,6 @@ const PosRoute = PosRouteImport.update({
   path: '/pos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PowerbiRoute = PowerbiRouteImport.update({
-  id: '/powerbi',
-  path: '/powerbi',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TablesRoute = TablesRouteImport.update({
   id: '/tables',
   path: '/tables',
@@ -79,41 +61,32 @@ const InvoiceOrderIdRoute = InvoiceOrderIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
-  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/payments': typeof PaymentsRoute
   '/pos': typeof PosRoute
-  '/powerbi': typeof PowerbiRoute
   '/tables': typeof TablesRoute
   '/invoice/$orderId': typeof InvoiceOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
-  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/payments': typeof PaymentsRoute
   '/pos': typeof PosRoute
-  '/powerbi': typeof PowerbiRoute
   '/tables': typeof TablesRoute
   '/invoice/$orderId': typeof InvoiceOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
-  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/payments': typeof PaymentsRoute
   '/pos': typeof PosRoute
-  '/powerbi': typeof PowerbiRoute
   '/tables': typeof TablesRoute
   '/invoice/$orderId': typeof InvoiceOrderIdRoute
 }
@@ -121,54 +94,42 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/analytics'
-    | '/customers'
     | '/login'
     | '/menu'
     | '/orders'
     | '/payments'
     | '/pos'
-    | '/powerbi'
     | '/tables'
     | '/invoice/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/analytics'
-    | '/customers'
     | '/login'
     | '/menu'
     | '/orders'
     | '/payments'
     | '/pos'
-    | '/powerbi'
     | '/tables'
     | '/invoice/$orderId'
   id:
     | '__root__'
     | '/'
-    | '/analytics'
-    | '/customers'
     | '/login'
     | '/menu'
     | '/orders'
     | '/payments'
     | '/pos'
-    | '/powerbi'
     | '/tables'
     | '/invoice/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AnalyticsRoute: typeof AnalyticsRoute
-  CustomersRoute: typeof CustomersRoute
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
   PaymentsRoute: typeof PaymentsRoute
   PosRoute: typeof PosRoute
-  PowerbiRoute: typeof PowerbiRoute
   TablesRoute: typeof TablesRoute
   InvoiceOrderIdRoute: typeof InvoiceOrderIdRoute
 }
@@ -180,20 +141,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/customers': {
-      id: '/customers'
-      path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -231,13 +178,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/powerbi': {
-      id: '/powerbi'
-      path: '/powerbi'
-      fullPath: '/powerbi'
-      preLoaderRoute: typeof PowerbiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/tables': {
       id: '/tables'
       path: '/tables'
@@ -257,14 +197,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AnalyticsRoute: AnalyticsRoute,
-  CustomersRoute: CustomersRoute,
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
   PaymentsRoute: PaymentsRoute,
   PosRoute: PosRoute,
-  PowerbiRoute: PowerbiRoute,
   TablesRoute: TablesRoute,
   InvoiceOrderIdRoute: InvoiceOrderIdRoute,
 }

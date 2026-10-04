@@ -6,7 +6,6 @@ import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
-import { customers } from "@/lib/mock-data";
 import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
@@ -68,7 +67,7 @@ function Orders() {
               <SheetHeader><SheetTitle className="text-xl font-extrabold">Order #{sel.number}</SheetTitle></SheetHeader>
               <div className="space-y-4 px-4 pb-6">
                 <div className="flex gap-2"><StatusBadge status={sel.status} /><StatusBadge status={sel.paymentStatus} /></div>
-                <div className="text-sm text-muted-foreground">{sel.tableId ? `Table ${sel.tableId.slice(1)}` : "Takeaway"} · {customers.find((c) => c.id === sel.customerId)?.name ?? "Walk-in"}</div>
+                <div className="text-sm text-muted-foreground">{sel.tableId ? `Table ${sel.tableId.slice(1)}` : "Takeaway"} · Walk-in Guest</div>
                 <ul className="space-y-2 border-y py-3 text-sm">
                   {consolidateOrderItems(sel.items).map((i, idx) => <li key={`${i.productId || i.name}-${idx}`} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
                 </ul>
@@ -87,8 +86,7 @@ function Orders() {
                       </Link>
                       <button
                         onClick={() => {
-                          const cust = customers.find((c) => c.id === sel.customerId);
-                          sendWhatsAppBill(sel, cust?.phone, cust?.name);
+                          sendWhatsAppBill(sel);
                         }}
                         className="w-full h-10 rounded-xl bg-emerald-600 text-xs font-extrabold text-white flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors shadow"
                       >

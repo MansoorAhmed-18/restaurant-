@@ -17,7 +17,7 @@ export function buildWhatsAppBillText(order: Order, customerName?: string): stri
 
   return `🧾 *TAN'S KITCHEN - OFFICIAL RECEIPT* 🧾
 
-Hello ${customerName || "Valued Customer"}! Thank you for dining with us.
+Hello! Thank you for dining with us.
 
 *Invoice No:* INV-${order.number}
 *Date:* ${dateStr}

@@ -20,7 +20,6 @@ import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
 import { getActiveStaff, type StaffUser } from "@/lib/auth";
-import { PowerBiDashboardView } from "@/components/pos/PowerBiDashboardView";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Billing Dashboard", "Live restaurant collection, POS billing terminal & daily sales metrics."),
@@ -56,7 +55,6 @@ export function Dashboard() {
   const categories = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<"powerbi" | "standard">("powerbi");
   const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
 
   useEffect(() => {
@@ -208,51 +206,6 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Dashboard Mode Selector: Power BI vs Standard POS */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-gradient-to-r from-card to-muted/40 p-2 shadow-sm">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode("powerbi")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-              viewMode === "powerbi"
-                ? "bg-[#252423] text-[#F2C811] shadow-md border border-[#F2C811]/30"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <Zap className="size-4 text-[#F2C811]" /> Power BI Dashboard View 🟡
-          </button>
-          <button
-            onClick={() => setViewMode("standard")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-              viewMode === "standard"
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <BarChart2 className="size-4" /> Standard Billing View
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <a 
-            href="https://app.fabric.microsoft.com/groups/me/reports/38c5dad2-f128-482a-a382-529715d21d5e/1eeb52d1680cd4017b76?experience=fabric-developer" 
-            target="_blank" 
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#F2C811] px-3.5 py-2 text-xs font-black text-black hover:opacity-90 transition-opacity shadow-sm"
-          >
-            Open in Microsoft Fabric ↗
-          </a>
-          <Link to="/powerbi" className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline pr-2">
-            Power BI Integration Hub <ChevronRight className="size-3.5" />
-          </Link>
-        </div>
-      </div>
-
-      {/* RENDER POWER BI DASHBOARD OR STANDARD DASHBOARD */}
-      {viewMode === "powerbi" ? (
-        <PowerBiDashboardView />
-      ) : (
-        <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Today Sales + % change vs yesterday */}
         <div className="card-surface p-5 border-l-4 border-l-primary relative overflow-hidden">
@@ -679,8 +632,6 @@ export function Dashboard() {
           ))}
         </div>
       </div>
-      </>
-      )}
     </AppShell>
   );
 }

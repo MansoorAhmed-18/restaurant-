@@ -17,7 +17,7 @@ export const Route = createFileRoute("/invoice/$orderId")({
 
 function Invoice() {
   const { orderId } = Route.useParams();
-  const { orders, customers } = usePos();
+  const { orders } = usePos();
   const o = orders.find((x) => x.id === orderId);
 
   if (!o) {
@@ -36,12 +36,11 @@ function Invoice() {
     );
   }
 
-  const cust = customers.find((c) => c.id === o.customerId);
-  const [phoneInput, setPhoneInput] = useState(cust?.phone || "");
+  const [phoneInput, setPhoneInput] = useState("");
 
   const handleSendWhatsApp = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    sendWhatsAppBill(o, phoneInput, cust?.name);
+    sendWhatsAppBill(o, phoneInput);
     toast.success("Opening WhatsApp with digital receipt!");
   };
 
@@ -103,7 +102,7 @@ function Invoice() {
           <span className="text-muted-foreground">{o.tableId ? "Table" : "Type"}</span>
           <span className="text-right">{o.tableId ? o.tableId.replace(/^t/, "") : "Takeaway"}</span>
           <span className="text-muted-foreground">Customer</span>
-          <span className="text-right">{cust?.name ?? "Walk-in Customer"}</span>
+          <span className="text-right">Walk-in Customer</span>
           <span className="text-muted-foreground">Paid via</span>
           <span className="text-right uppercase font-bold text-emerald-600">{o.paymentMethod ?? "—"}</span>
         </div>

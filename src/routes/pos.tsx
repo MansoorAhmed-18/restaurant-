@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { 
   Minus, Plus, Search, ShoppingCart, Trash2, Printer, 
-  QrCode, Banknote, CheckCircle2, X, User, UserPlus, MessageSquare, Send 
+  QrCode, Banknote, CheckCircle2, X, MessageSquare, Send 
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -16,7 +16,7 @@ import type { PaymentMethod } from "@/lib/types";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/pos")({
-  head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders, customer details & thermal receipts."),
+  head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders & thermal receipts."),
   component: Pos,
 });
 
@@ -28,9 +28,6 @@ export function Pos() {
   const [q, setQ] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
 
-  // Quick Customer Input Modal / Toggle State
-  const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [custName, setCustName] = useState("");
   const [custPhone, setCustPhone] = useState("");
 
   // Quick Pay Modal State
@@ -50,18 +47,6 @@ export function Pos() {
 
   const qtyOf = (id: string) => pos.cart.find((c) => c.productId === id)?.qty ?? 0;
 
-  const handleAddQuickCustomer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!custName) {
-      toast.error("Please enter customer name.");
-      return;
-    }
-    const newC = pos.addCustomer({ name: custName, phone: custPhone });
-    toast.success(`Customer ${newC.name} saved & linked to bill!`);
-    setShowAddCustomer(false);
-    setCustName("");
-  };
-
   const handlePlaceOrder = (payNow: boolean) => {
     if (pos.cart.length === 0) return;
     if (payNow) {
@@ -73,8 +58,6 @@ export function Pos() {
     }
   };
 
-  const selectedCustomer = pos.customers.find((c) => c.id === pos.customerId);
-
   const handleCompletePayment = (shouldSendWhatsApp: boolean = false) => {
     const o = pos.placeOrder();
     if (!o) return;
@@ -82,9 +65,8 @@ export function Pos() {
     toast.success(`Bill #${o.number} paid via ${selectedMethod.toUpperCase()}!`);
     setPayModalOpen(false);
 
-    const targetPhone = custPhone || selectedCustomer?.phone || "";
     if (shouldSendWhatsApp || sendWhatsAppOnPay) {
-      sendWhatsAppBill(o, targetPhone, selectedCustomer?.name || custName);
+      sendWhatsAppBill(o, custPhone);
     }
 
     nav({ to: "/invoice/$orderId", params: { orderId: o.id } });
@@ -97,7 +79,7 @@ export function Pos() {
     <AppShell>
       <PageHeader 
         title="POS Billing Terminal 🧾" 
-        subtitle="Select items, collect customer details, print thermal bill & record collections." 
+        subtitle="Select items, print thermal bill & record collections." 
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
@@ -211,53 +193,7 @@ export function Pos() {
             )}
           </div>
 
-          {/* Customer Selection & Quick Add */}
-          <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-muted-foreground uppercase flex items-center gap-1">
-                <User className="size-3.5 text-primary" /> Customer Info
-              </span>
-              <button 
-                onClick={() => setShowAddCustomer(!showAddCustomer)} 
-                className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline"
-              >
-                <UserPlus className="size-3" /> {showAddCustomer ? "Cancel" : "+ New Customer"}
-              </button>
-            </div>
 
-            {showAddCustomer ? (
-              <form onSubmit={handleAddQuickCustomer} className="space-y-2 pt-1 border-t">
-                <input 
-                  value={custName} 
-                  onChange={(e) => setCustName(e.target.value)} 
-                  placeholder="Customer Name (e.g., Rajesh)" 
-                  className="h-8 w-full rounded-lg border bg-card px-2 text-xs font-medium"
-                />
-                <button type="submit" className="h-8 w-full rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-                  Save Customer & Link to Bill
-                </button>
-              </form>
-            ) : (
-              <select 
-                value={pos.customerId ?? ""} 
-                onChange={(e) => pos.setCustomerId(e.target.value || undefined)} 
-                className="h-9 w-full rounded-lg border bg-card px-2 text-xs font-bold shadow-sm"
-              >
-                <option value="">-- Guest / Walk-in Customer --</option>
-                {pos.customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} • {c.visits} Visits
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {selectedCustomer && !showAddCustomer && (
-              <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 pt-1">
-                <CheckCircle2 className="size-3" /> Linked to {selectedCustomer.name} ({selectedCustomer.visits} visits, {inr(selectedCustomer.totalSpent)} spent)
-              </div>
-            )}
-          </div>
 
           {/* Order Type / Table */}
           <div>
@@ -341,11 +277,6 @@ export function Pos() {
             <div className="rounded-2xl bg-primary/10 p-4 text-center">
               <div className="text-xs font-bold text-muted-foreground uppercase">Total Bill Amount</div>
               <div className="text-3xl font-black text-primary mt-1">{inr(pos.totals.total)}</div>
-              {selectedCustomer && (
-                <div className="text-xs font-bold text-emerald-600 mt-1">
-                  Customer: {selectedCustomer.name}
-                </div>
-              )}
             </div>
 
             {/* Payment Method Selector (Cash vs UPI ONLY) */}
