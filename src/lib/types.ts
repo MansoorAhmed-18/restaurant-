@@ -18,3 +18,19 @@ export interface Order {
   subtotal: number; tax: number; total: number; status: OrderStatus;
   paymentStatus: PaymentStatus; paymentMethod?: PaymentMethod; createdAt: string; type: "dine-in" | "takeaway";
 }
+
+export interface MonthlySalesRecord {
+  month: string;
+  monthIndex: number;
+  year: number;
+  sales: number;
+  target: number;
+  orders: number;
+  dineIn: number;
+  takeaway: number;
+  upi: number;
+  cash: number;
+  avgOrderValue: number;
+  momGrowth: number; // percentage
+}
+

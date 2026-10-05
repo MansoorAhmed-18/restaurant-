@@ -2,10 +2,11 @@ import type { Order } from "./types";
 import { consolidateOrderItems } from "./utils";
 
 export function buildWhatsAppBillText(order: Order, customerName?: string): string {
-  const dateStr = new Date(order.createdAt).toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const d = new Date(order.createdAt);
+  const dateFormatted = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const timeFormatted = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  const dateStr = `${dateFormatted} at ${timeFormatted}`;
+
 
   const consolidated = consolidateOrderItems(order.items || []);
   const itemsText = consolidated

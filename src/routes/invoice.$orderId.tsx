@@ -92,19 +92,23 @@ function Invoice() {
           <div className="font-bold text-sm">Spice Route Kitchen</div>
           <div className="text-xs text-muted-foreground">12, 100 Ft Road, Indiranagar, Bengaluru 560038</div>
         </div>
-        <div className="my-5 grid grid-cols-2 gap-y-1 border-y border-dashed py-3 text-xs">
-          <span className="text-muted-foreground">Invoice</span>
-          <span className="text-right font-bold">INV-{o.number}</span>
-          <span className="text-muted-foreground">Date</span>
-          <span className="text-right">
-            {new Date(o.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+        <div className="my-5 grid grid-cols-2 gap-y-1.5 border-y border-dashed py-3.5 text-xs">
+          <span className="text-muted-foreground font-semibold">Invoice No</span>
+          <span className="text-right font-extrabold text-foreground">INV-{o.number}</span>
+          <span className="text-muted-foreground font-semibold">Bill Date</span>
+          <span className="text-right font-bold text-foreground">
+            {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
           </span>
-          <span className="text-muted-foreground">{o.tableId ? "Table" : "Type"}</span>
-          <span className="text-right">{o.tableId ? o.tableId.replace(/^t/, "") : "Takeaway"}</span>
-          <span className="text-muted-foreground">Customer</span>
-          <span className="text-right">Walk-in Customer</span>
-          <span className="text-muted-foreground">Paid via</span>
-          <span className="text-right uppercase font-bold text-emerald-600">{o.paymentMethod ?? "—"}</span>
+          <span className="text-muted-foreground font-semibold">Bill Time</span>
+          <span className="text-right font-bold text-foreground">
+            {new Date(o.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+          </span>
+          <span className="text-muted-foreground font-semibold">{o.tableId ? "Table" : "Order Type"}</span>
+          <span className="text-right font-bold">{o.tableId ? `Table ${o.tableId.replace(/^t/, "")}` : "Takeaway Counter"}</span>
+          <span className="text-muted-foreground font-semibold">Customer</span>
+          <span className="text-right font-medium">Walk-in Customer</span>
+          <span className="text-muted-foreground font-semibold">Payment Status</span>
+          <span className="text-right uppercase font-black text-emerald-600">PAID via {o.paymentMethod ?? "UPI"}</span>
         </div>
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">

@@ -4,7 +4,7 @@
  * touches this file. E.g. getProducts -> fetch(`${STRAPI_URL}/api/products?populate=category`).
  */
 import * as mock from "./mock-data";
-import type { Category, Customer, Order, Product, RestaurantTable } from "./types";
+import type { Category, Customer, MonthlySalesRecord, Order, Product, RestaurantTable } from "./types";
 
 const delay = <T,>(v: T, ms = 450) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), ms));
 
@@ -15,7 +15,9 @@ export const api = {
   getCustomers: (): Promise<Customer[]> => delay(mock.customers),
   getSeedOrders: (): Promise<Order[]> => delay(mock.orders),
   getHourlySales: () => delay(mock.hourlySales),
+  getMonthlySales: (): Promise<MonthlySalesRecord[]> => delay(mock.monthlySalesData),
 };
 
 export const inr = (n: number) =>
   "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+
