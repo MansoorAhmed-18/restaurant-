@@ -36,7 +36,8 @@ export function Dashboard() {
   const categories = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   const monthlyDataQuery = useQuery({ queryKey: ["monthlySales"], queryFn: api.getMonthlySales });
 
-  const [selectedYear, setSelectedYear] = useState<number | "all">(2027);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const [selectedYear, setSelectedYear] = useState<number | "all">(new Date().getFullYear());
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -112,27 +113,28 @@ export function Dashboard() {
     return [...filteredMonthlyRecords].sort((a, b) => b.sales - a.sales)[0];
   }, [filteredMonthlyRecords]);
 
-  // YoY Comparison Data (2027 vs 2028 month by month)
+  // YoY Comparison Data (Current Year vs Next Year month by month)
   const yoyComparisonData = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const records2027 = rawMonthlyData.filter((r) => r.year === 2027);
-    const records2028 = rawMonthlyData.filter((r) => r.year === 2028);
+    const recordsCurr = rawMonthlyData.filter((r) => r.year === currentYear);
+    const recordsNext = rawMonthlyData.filter((r) => r.year === currentYear + 1);
 
     return months.map((m, idx) => {
-      const rec2027 = records2027.find((r) => r.monthIndex === idx + 1);
-      const rec2028 = records2028.find((r) => r.monthIndex === idx + 1);
-      const sales27 = rec2027 ? rec2027.sales : 0;
-      const sales28 = rec2028 ? rec2028.sales : 0;
-      const growth = sales27 > 0 ? Number((((sales28 - sales27) / sales27) * 100).toFixed(1)) : 0;
+      const recCurr = recordsCurr.find((r) => r.monthIndex === idx + 1);
+      const recNext = recordsNext.find((r) => r.monthIndex === idx + 1);
+      const salesCurr = recCurr ? recCurr.sales : 0;
+      const salesNext = recNext ? recNext.sales : 0;
+      const growth = salesCurr > 0 ? Number((((salesNext - salesCurr) / salesCurr) * 100).toFixed(1)) : 0;
 
       return {
         month: m,
-        sales2027: sales27,
-        sales2028: sales28,
+        salesCurr,
+        salesNext,
         growthPct: growth,
       };
     });
-  }, [rawMonthlyData]);
+  }, [rawMonthlyData, currentYear]);
+
 
   // Monthly Payment Channel Distribution (UPI vs Cash)
   const monthlyPaymentSummary = useMemo(() => {
@@ -190,7 +192,7 @@ export function Dashboard() {
     <AppShell>
       <PageHeader 
         title={`${getTimeGreeting()}, ${staff.name.split(" ")[0]} 👋`} 
-        subtitle={`PowerBI Executive Sales Hub • Monthly Revenue Reporting, 2027 & 2028 Trends & Billing Ledger.`}
+        subtitle={`PowerBI Executive Sales Hub • Monthly Revenue Reporting, ${currentYear} & Future Growth Trends & Billing Ledger.`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -211,7 +213,7 @@ export function Dashboard() {
         } 
       />
 
-      {/* POWER BI INTERACTIVE SLICER & YEAR FILTER BAR (2027 & 2028) */}
+      {/* POWER BI INTERACTIVE SLICER & YEAR FILTER BAR */}
       <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm border-primary/20 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-2 text-foreground font-black text-sm uppercase tracking-wider">
@@ -220,7 +222,7 @@ export function Dashboard() {
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-muted-foreground">Reporting Period:</span>
             <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-black text-primary font-mono">
-              {selectedYear === "all" ? "2027 - 2028 (Full 2-Year Range)" : `Year ${selectedYear}`}
+              {selectedYear === "all" ? `${currentYear} vs ${currentYear + 1} (YoY View)` : `Year ${selectedYear}`}
               {selectedQuarter !== "all" && ` • ${selectedQuarter}`}
               {selectedMonth !== "all" && ` • ${selectedMonth.toUpperCase()}`}
             </span>
@@ -232,24 +234,34 @@ export function Dashboard() {
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-muted-foreground mr-1">Select Year:</span>
             <button
-              onClick={() => { setSelectedYear(2027); setSelectedMonth("all"); }}
+              onClick={() => { setSelectedYear(currentYear); setSelectedMonth("all"); }}
               className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === 2027 
+                selectedYear === currentYear 
                   ? "bg-primary text-primary-foreground shadow-md scale-105" 
                   : "border bg-muted/30 text-foreground hover:bg-muted"
               }`}
             >
-              📅 Year 2027
+              📅 {currentYear} (Current)
             </button>
             <button
-              onClick={() => { setSelectedYear(2028); setSelectedMonth("all"); }}
+              onClick={() => { setSelectedYear(currentYear + 1); setSelectedMonth("all"); }}
               className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === 2028 
+                selectedYear === currentYear + 1 
                   ? "bg-primary text-primary-foreground shadow-md scale-105" 
                   : "border bg-muted/30 text-foreground hover:bg-muted"
               }`}
             >
-              🚀 Year 2028
+              🚀 {currentYear + 1}
+            </button>
+            <button
+              onClick={() => { setSelectedYear(currentYear + 2); setSelectedMonth("all"); }}
+              className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
+                selectedYear === currentYear + 2 
+                  ? "bg-primary text-primary-foreground shadow-md scale-105" 
+                  : "border bg-muted/30 text-foreground hover:bg-muted"
+              }`}
+            >
+              ✨ {currentYear + 2}
             </button>
             <button
               onClick={() => { setSelectedYear("all"); setSelectedQuarter("all"); setSelectedMonth("all"); }}
@@ -259,7 +271,7 @@ export function Dashboard() {
                   : "border bg-muted/30 text-foreground hover:bg-muted"
               }`}
             >
-              📊 2027 vs 2028 YoY
+              📊 YoY Comparison
             </button>
           </div>
 
@@ -305,7 +317,7 @@ export function Dashboard() {
         <div className="card-surface p-5 border-l-4 border-l-primary relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
-              {selectedMonth !== "all" ? `${selectedMonth} Revenue` : selectedYear === "all" ? "2-Year Total Sales" : `${selectedYear} Monthly Sales`}
+              {selectedMonth !== "all" ? `${selectedMonth} Revenue` : selectedYear === "all" ? "Total Revenue" : `${selectedYear} Monthly Sales`}
             </span>
             <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
               <IndianRupee className="size-5" />
@@ -314,7 +326,7 @@ export function Dashboard() {
           <div className="mt-3 text-2xl font-black text-foreground font-mono">{inr(totalMonthlySales)}</div>
           <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
             <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5">
-              <TrendingUp className="size-3" /> {selectedYear === 2028 ? "+25.8% YoY" : "+14.6% YoY"}
+              <TrendingUp className="size-3" /> +16.4% MoM
             </span>
             <span className="text-muted-foreground">vs previous period</span>
           </div>
@@ -373,7 +385,7 @@ export function Dashboard() {
                 <BarChart2 className="size-5 text-primary" /> Monthly Sales & Revenue Performance (Monthly Basis)
               </h2>
               <p className="text-xs text-muted-foreground">
-                Showing month-by-month sales for {selectedYear === "all" ? "2027 & 2028" : `Year ${selectedYear}`}
+                Showing month-by-month sales for {selectedYear === "all" ? `${currentYear} & ${currentYear + 1}` : `Year ${selectedYear}`}
               </p>
             </div>
             {peakMonthRecord && (
@@ -413,7 +425,7 @@ export function Dashboard() {
                   {filteredMonthlyRecords.map((entry, index) => (
                     <Cell 
                       key={`month-cell-${index}`} 
-                      fill={entry.sales >= (peakMonthRecord?.sales || 0) ? "#f97316" : entry.year === 2028 ? "#8b5cf6" : "var(--primary)"} 
+                      fill={entry.sales >= (peakMonthRecord?.sales || 0) ? "#f97316" : entry.year === currentYear + 1 ? "#8b5cf6" : "var(--primary)"} 
                     />
                   ))}
                 </Bar>
@@ -470,28 +482,28 @@ export function Dashboard() {
               <span className="font-extrabold">PowerBI Executive Summary:</span>
             </div>
             <p className="text-[11px] leading-relaxed">
-              {selectedYear === 2028 
-                ? "Year 2028 records strongest quarterly performance with average ticket size ₹553."
-                : "Year 2027 shows consistent upward surge from Q1 to festive peak in Q4."}
+              {selectedYear === currentYear + 1 
+                ? `Year ${currentYear + 1} records strong growth projections with average ticket size ₹550+.`
+                : `Year ${currentYear} shows consistent upward momentum from Q1 to festive peak in Q4.`}
             </p>
           </div>
         </div>
       </div>
 
-      {/* POWERBI CHART 2: 2027 vs 2028 YEAR-OVER-YEAR MONTHLY COMPARISON */}
+      {/* POWERBI CHART 2: YEAR-OVER-YEAR MONTHLY COMPARISON */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* YoY Multi-Bar Comparison Chart */}
         <div className="card-surface p-5 lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div>
               <h2 className="font-extrabold text-base flex items-center gap-2">
-                <TrendingUp className="size-5 text-emerald-600" /> Year-over-Year (2027 vs 2028) Monthly Comparison
+                <TrendingUp className="size-5 text-emerald-600" /> Year-over-Year ({currentYear} vs {currentYear + 1}) Monthly Comparison
               </h2>
               <p className="text-xs text-muted-foreground">Side-by-side revenue comparison across all 12 months</p>
             </div>
             <div className="flex items-center gap-3 text-xs font-bold">
-              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-primary"></span> 2027</span>
-              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-purple-600"></span> 2028</span>
+              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-primary"></span> {currentYear}</span>
+              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-purple-600"></span> {currentYear + 1}</span>
             </div>
           </div>
 
@@ -502,15 +514,16 @@ export function Dashboard() {
                 <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 100000).toFixed(1)}L`} />
                 <Tooltip 
-                  formatter={(v: number, name: string) => [inr(v), name === "sales2027" ? "2027 Sales" : "2028 Sales"]}
+                  formatter={(v: number, name: string) => [inr(v), name === "salesCurr" ? `${currentYear} Sales` : `${currentYear + 1} Sales`]}
                   contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderRadius: "0.75rem", fontSize: "12px", fontWeight: "bold" }}
                 />
-                <Bar dataKey="sales2027" name="sales2027" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="sales2028" name="sales2028" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="salesCurr" name="salesCurr" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="salesNext" name="salesNext" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
+
 
         {/* Monthly Channel Breakdown (UPI vs Cash) */}
         <div className="card-surface p-5 flex flex-col justify-between">
