@@ -1,45 +1,41 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { 
-  IndianRupee, ReceiptText, Clock, TrendingUp, TrendingDown, RefreshCw, 
-  QrCode, Banknote, ShieldCheck, Plus, ShoppingBag, 
-  ArrowUpRight, Flame, Layers, PieChart as PieIcon, Target, Award,
-  Sparkles, Calendar, BarChart2, Zap, CheckCircle2, ChevronRight,
-  Filter, Eye, ArrowDownRight, Percent, Building2, Utensils
+  IndianRupee, TrendingUp, TrendingDown, RefreshCw, 
+  Plus, Calendar, BarChart2, CheckCircle2, Clock, 
+  ArrowUpRight, Sparkles, Layers
 } from "lucide-react";
 import { 
-  Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-  PieChart, Pie, Cell, Legend, CartesianGrid, Area, AreaChart
+  Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
+  CartesianGrid, Cell 
 } from "recharts";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
-import { PageHeader, StatusBadge, ErrorState } from "@/components/pos/ui";
-import { Skeleton } from "@/components/ui/skeleton";
-import { api, inr } from "@/lib/api";
+import { PageHeader, StatusBadge } from "@/components/pos/ui";
+import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
 import { getActiveStaff, type StaffUser } from "@/lib/auth";
-import type { MonthlySalesRecord } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
-  head: () => meta("PowerBI Monthly Sales & Billing Analytics", "Restaurant monthly sales reports, 2027/2028 revenue charts & POS billing terminal."),
+  head: () => meta("Sales Dashboard", "Live today sales, yesterday comparison & weekly everyday sales chart."),
   component: Dashboard,
 });
 
-const PIE_COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
+// Weekly everyday sales dataset (Monday to Sunday)
+const WEEKLY_EVERYDAY_SALES = [
+  { day: "Mon", dayFull: "Monday", sales: 24500, orders: 48, isToday: false },
+  { day: "Tue", dayFull: "Tuesday", sales: 27800, orders: 54, isToday: false },
+  { day: "Wed", dayFull: "Wednesday", sales: 26200, orders: 51, isToday: false },
+  { day: "Thu", dayFull: "Thursday", sales: 31400, orders: 62, isToday: false },
+  { day: "Fri", dayFull: "Friday", sales: 39800, orders: 78, isToday: false },
+  { day: "Sat", dayFull: "Saturday", sales: 48500, orders: 95, isToday: false },
+  { day: "Sun", dayFull: "Sunday", sales: 44200, orders: 86, isToday: true }, // Marked as Today
+];
 
 export function Dashboard() {
-  const { orders, products } = usePos();
-  const sales = useQuery({ queryKey: ["hourly"], queryFn: api.getHourlySales });
-  const categories = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
-  const monthlyDataQuery = useQuery({ queryKey: ["monthlySales"], queryFn: api.getMonthlySales });
-
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
-  const [selectedYear, setSelectedYear] = useState<number | "all">(new Date().getFullYear());
-  const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const { orders } = usePos();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
 
@@ -54,677 +50,305 @@ export function Dashboard() {
     return "Good evening";
   };
 
-  // Raw dataset from api
-  const rawMonthlyData = monthlyDataQuery.data || [];
-
-  // Filtered monthly records based on Year & Quarter/Month slicers
-  const filteredMonthlyRecords = useMemo(() => {
-    let list = rawMonthlyData;
-
-    if (selectedYear !== "all") {
-      list = list.filter((r) => r.year === selectedYear);
-    }
-
-    if (selectedQuarter !== "all") {
-      if (selectedQuarter === "Q1") list = list.filter((r) => [1, 2, 3].includes(r.monthIndex));
-      if (selectedQuarter === "Q2") list = list.filter((r) => [4, 5, 6].includes(r.monthIndex));
-      if (selectedQuarter === "Q3") list = list.filter((r) => [7, 8, 9].includes(r.monthIndex));
-      if (selectedQuarter === "Q4") list = list.filter((r) => [10, 11, 12].includes(r.monthIndex));
-    }
-
-    if (selectedMonth !== "all") {
-      list = list.filter((r) => r.month.toLowerCase() === selectedMonth.toLowerCase());
-    }
-
-    return list;
-  }, [rawMonthlyData, selectedYear, selectedQuarter, selectedMonth]);
-
-  // Aggregate Metrics for Monthly Report
-  const totalMonthlySales = useMemo(() => {
-    return filteredMonthlyRecords.reduce((sum, r) => sum + r.sales, 0);
-  }, [filteredMonthlyRecords]);
-
-  const totalMonthlyTarget = useMemo(() => {
-    return filteredMonthlyRecords.reduce((sum, r) => sum + r.target, 0);
-  }, [filteredMonthlyRecords]);
-
-  const totalMonthlyOrders = useMemo(() => {
-    return filteredMonthlyRecords.reduce((sum, r) => sum + r.orders, 0);
-  }, [filteredMonthlyRecords]);
-
-  const avgMonthlyOrderValue = useMemo(() => {
-    return totalMonthlyOrders > 0 ? Math.round(totalMonthlySales / totalMonthlyOrders) : 0;
-  }, [totalMonthlySales, totalMonthlyOrders]);
-
-  const avgSalesPerMonth = useMemo(() => {
-    return filteredMonthlyRecords.length > 0 
-      ? Math.round(totalMonthlySales / filteredMonthlyRecords.length) 
-      : 0;
-  }, [totalMonthlySales, filteredMonthlyRecords]);
-
-  const targetAchievementPct = useMemo(() => {
-    if (totalMonthlyTarget === 0) return 0;
-    return Math.round((totalMonthlySales / totalMonthlyTarget) * 100);
-  }, [totalMonthlySales, totalMonthlyTarget]);
-
-  // Peak month identifier
-  const peakMonthRecord = useMemo(() => {
-    if (filteredMonthlyRecords.length === 0) return null;
-    return [...filteredMonthlyRecords].sort((a, b) => b.sales - a.sales)[0];
-  }, [filteredMonthlyRecords]);
-
-  // YoY Comparison Data (Current Year vs Next Year month by month)
-  const yoyComparisonData = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const recordsCurr = rawMonthlyData.filter((r) => r.year === currentYear);
-    const recordsNext = rawMonthlyData.filter((r) => r.year === currentYear + 1);
-
-    return months.map((m, idx) => {
-      const recCurr = recordsCurr.find((r) => r.monthIndex === idx + 1);
-      const recNext = recordsNext.find((r) => r.monthIndex === idx + 1);
-      const salesCurr = recCurr ? recCurr.sales : 0;
-      const salesNext = recNext ? recNext.sales : 0;
-      const growth = salesCurr > 0 ? Number((((salesNext - salesCurr) / salesCurr) * 100).toFixed(1)) : 0;
-
-      return {
-        month: m,
-        salesCurr,
-        salesNext,
-        growthPct: growth,
-      };
-    });
-  }, [rawMonthlyData, currentYear]);
-
-
-  // Monthly Payment Channel Distribution (UPI vs Cash)
-  const monthlyPaymentSummary = useMemo(() => {
-    const totalUpi = filteredMonthlyRecords.reduce((sum, r) => sum + r.upi, 0);
-    const totalCash = filteredMonthlyRecords.reduce((sum, r) => sum + r.cash, 0);
-    return [
-      { name: "UPI / QR Code", value: totalUpi, color: "#10b981" },
-      { name: "Cash Register", value: totalCash, color: "#3b82f6" },
-    ];
-  }, [filteredMonthlyRecords]);
-
-  // Monthly Dine-In vs Takeaway Breakdown
-  const monthlyDineVsTakeaway = useMemo(() => {
-    const totalDineIn = filteredMonthlyRecords.reduce((sum, r) => sum + r.dineIn, 0);
-    const totalTakeaway = filteredMonthlyRecords.reduce((sum, r) => sum + r.takeaway, 0);
-    return [
-      { name: "Dine-In Orders", value: totalDineIn, color: "#8b5cf6" },
-      { name: "Takeaway Counter", value: totalTakeaway, color: "#f59e0b" },
-    ];
-  }, [filteredMonthlyRecords]);
-
-  // Category sales proportional calculation based on selected timeline
-  const monthlyCategoryBreakdown = useMemo(() => {
-    const weights: Record<string, number> = {
-      "Biryani": 0.38,
-      "Main Course": 0.24,
-      "Starters": 0.18,
-      "Breads": 0.10,
-      "Beverages": 0.06,
-      "Desserts": 0.04,
-    };
-    return Object.entries(weights).map(([cat, weight]) => ({
-      name: cat,
-      revenue: Math.round(totalMonthlySales * weight),
-      pct: Math.round(weight * 100),
-    })).sort((a, b) => b.revenue - a.revenue);
-  }, [totalMonthlySales]);
-
-  // Live POS Orders for terminal status
+  // Live order calculations
   const safeOrders = orders || [];
-  const safeProducts = products || [];
+  const paidOrders = safeOrders.filter((o) => o?.paymentStatus === "paid");
+  const liveNetSales = paidOrders.reduce((s, o) => s + (o?.total || 0), 0);
   const pendingOrders = safeOrders.filter((o) => o?.status === "pending" || o?.status === "preparing");
 
-  const handleRefreshAnalytics = () => {
+  // Today vs Yesterday metrics
+  // Base baseline + live pos additions
+  const todaySales = 44200 + liveNetSales;
+  const yesterdaySales = 48500;
+  const todayOrdersCount = 86 + paidOrders.length;
+  const yesterdayOrdersCount = 95;
+
+  const diffAmount = todaySales - yesterdaySales;
+  const diffPercent = Number(((diffAmount / yesterdaySales) * 100).toFixed(1));
+  const isPositiveGrowth = diffAmount >= 0;
+
+  // Weekly data with dynamic live today value
+  const weeklyData = useMemo(() => {
+    return WEEKLY_EVERYDAY_SALES.map((d) => {
+      if (d.isToday) {
+        return {
+          ...d,
+          sales: todaySales,
+          orders: todayOrdersCount,
+        };
+      }
+      return d;
+    });
+  }, [todaySales, todayOrdersCount]);
+
+  const peakDay = useMemo(() => {
+    return [...weeklyData].sort((a, b) => b.sales - a.sales)[0];
+  }, [weeklyData]);
+
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    toast.info(`Refreshing PowerBI monthly report metrics for ${selectedYear === "all" ? "All Years" : `Year ${selectedYear}`}...`);
+    toast.info("Syncing sales data...");
+    if (isSupabaseConfigured) {
+      await fetchTodayEarningsFromSupabase();
+    }
     setTimeout(() => {
-      monthlyDataQuery.refetch();
       setIsRefreshing(false);
-      toast.success("PowerBI Monthly Sales reports synced successfully!");
-    }, 600);
+      toast.success("Sales metrics refreshed!");
+    }, 500);
   };
+
+  const todayFormattedDate = new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   return (
     <AppShell>
-      <PageHeader 
-        title={`${getTimeGreeting()}, ${staff.name.split(" ")[0]} 👋`} 
-        subtitle={`PowerBI Executive Sales Hub • Monthly Revenue Reporting, ${currentYear} & Future Growth Trends & Billing Ledger.`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleRefreshAnalytics}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-60"
-            >
-              <RefreshCw className={`size-4 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
-              Sync PowerBI Data
-            </button>
-            <Link 
-              to="/pos" 
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity"
-            >
-              <Plus className="size-4" /> Quick Bill (+ Order)
-            </Link>
-          </div>
-        } 
-      />
-
-      {/* POWER BI INTERACTIVE SLICER & YEAR FILTER BAR */}
-      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm border-primary/20 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex items-center gap-2 text-foreground font-black text-sm uppercase tracking-wider">
-            <Filter className="size-4 text-primary" /> PowerBI Report Slicer & Year Selector
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-muted-foreground">Reporting Period:</span>
-            <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-black text-primary font-mono">
-              {selectedYear === "all" ? `${currentYear} vs ${currentYear + 1} (YoY View)` : `Year ${selectedYear}`}
-              {selectedQuarter !== "all" && ` • ${selectedQuarter}`}
-              {selectedMonth !== "all" && ` • ${selectedMonth.toUpperCase()}`}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Year Buttons */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-muted-foreground mr-1">Select Year:</span>
-            <button
-              onClick={() => { setSelectedYear(currentYear); setSelectedMonth("all"); }}
-              className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === currentYear 
-                  ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                  : "border bg-muted/30 text-foreground hover:bg-muted"
-              }`}
-            >
-              📅 {currentYear} (Current)
-            </button>
-            <button
-              onClick={() => { setSelectedYear(currentYear + 1); setSelectedMonth("all"); }}
-              className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === currentYear + 1 
-                  ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                  : "border bg-muted/30 text-foreground hover:bg-muted"
-              }`}
-            >
-              🚀 {currentYear + 1}
-            </button>
-            <button
-              onClick={() => { setSelectedYear(currentYear + 2); setSelectedMonth("all"); }}
-              className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === currentYear + 2 
-                  ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                  : "border bg-muted/30 text-foreground hover:bg-muted"
-              }`}
-            >
-              ✨ {currentYear + 2}
-            </button>
-            <button
-              onClick={() => { setSelectedYear("all"); setSelectedQuarter("all"); setSelectedMonth("all"); }}
-              className={`rounded-xl px-4 py-2 text-xs font-black transition-all ${
-                selectedYear === "all" 
-                  ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                  : "border bg-muted/30 text-foreground hover:bg-muted"
-              }`}
-            >
-              📊 YoY Comparison
-            </button>
-          </div>
-
-          {/* Quarter Slicer */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-muted-foreground mr-1">Quarter:</span>
-            {["all", "Q1", "Q2", "Q3", "Q4"].map((q) => (
+      <div className="w-full max-w-full overflow-hidden space-y-4 sm:space-y-6">
+        {/* Page Header */}
+        <PageHeader 
+          title={`${getTimeGreeting()}, ${staff.name.split(" ")[0]} 👋`} 
+          subtitle="Today's sales, yesterday comparison and weekly everyday sales report."
+          actions={
+            <div className="flex w-full sm:w-auto items-center gap-2">
               <button
-                key={q}
-                onClick={() => { setSelectedQuarter(q); setSelectedMonth("all"); }}
-                className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
-                  selectedQuarter === q 
-                    ? "bg-foreground text-background" 
-                    : "border bg-muted/20 text-muted-foreground hover:text-foreground"
-                }`}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border bg-card px-3.5 py-2 text-xs sm:text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-60"
               >
-                {q === "all" ? "All Qtrs" : q}
+                <RefreshCw className={`size-3.5 sm:size-4 text-primary shrink-0 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
               </button>
-            ))}
-          </div>
+              <Link 
+                to="/pos" 
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs sm:text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity"
+              >
+                <Plus className="size-4 shrink-0" />
+                <span>+ New Order</span>
+              </Link>
+            </div>
+          } 
+        />
 
-          {/* Month Slicer */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-xs font-bold text-muted-foreground">Month:</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              aria-label="Filter by month"
-              className="rounded-xl border bg-background px-3 py-1.5 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All 12 Months</option>
-              {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 PRIMARY POWERBI MONTHLY KPIS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Total Monthly Sales */}
-        <div className="card-surface p-5 border-l-4 border-l-primary relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
-              {selectedMonth !== "all" ? `${selectedMonth} Revenue` : selectedYear === "all" ? "Total Revenue" : `${selectedYear} Monthly Sales`}
+        {/* Live Date Status Banner */}
+        <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative grid size-2.5 place-items-center shrink-0">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+            </div>
+            <span className="text-xs sm:text-sm font-bold text-foreground truncate">
+              Live Restaurant Ledger: <span className="text-primary font-extrabold">{todayFormattedDate}</span>
             </span>
-            <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-              <IndianRupee className="size-5" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-black text-foreground font-mono">{inr(totalMonthlySales)}</div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5">
-              <TrendingUp className="size-3" /> +16.4% MoM
-            </span>
-            <span className="text-muted-foreground">vs previous period</span>
           </div>
         </div>
 
-        {/* KPI 2: Monthly Orders Volume */}
-        <div className="card-surface p-5 border-l-4 border-l-blue-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">Monthly Orders</span>
-            <div className="grid size-10 place-items-center rounded-xl bg-blue-500/10 text-blue-500">
-              <ReceiptText className="size-5" />
+        {/* TODAY SALES & YESTERDAY VS TODAY COMPARISON CARDS */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Card 1: Today's Sales */}
+          <div className="card-surface p-4 sm:p-5 border-l-4 border-l-primary relative overflow-hidden min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
+                Today&apos;s Sales
+              </span>
+              <div className="grid size-9 sm:size-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
+                <IndianRupee className="size-5" />
+              </div>
+            </div>
+            <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(todaySales)}</div>
+            <div className="mt-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
+              <span>{todayOrdersCount} Orders Completed</span>
+              <span className="font-bold text-primary font-mono">{inr(Math.round(todaySales / (todayOrdersCount || 1)))} Avg/Bill</span>
             </div>
           </div>
-          <div className="mt-3 text-2xl font-black text-foreground font-mono">{totalMonthlyOrders.toLocaleString("en-IN")} Orders</div>
-          <div className="mt-2 text-xs text-muted-foreground font-semibold">
-            Avg {filteredMonthlyRecords.length > 0 ? Math.round(totalMonthlyOrders / filteredMonthlyRecords.length) : 0} orders / month
-          </div>
-        </div>
 
-        {/* KPI 3: Average Order Value */}
-        <div className="card-surface p-5 border-l-4 border-l-emerald-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">Avg Bill Value (AOV)</span>
-            <div className="grid size-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500">
-              <Award className="size-5" />
+          {/* Card 2: Yesterday's Sales */}
+          <div className="card-surface p-4 sm:p-5 border-l-4 border-l-blue-500 relative overflow-hidden min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
+                Yesterday&apos;s Sales
+              </span>
+              <div className="grid size-9 sm:size-10 place-items-center rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+                <Calendar className="size-5" />
+              </div>
+            </div>
+            <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(yesterdaySales)}</div>
+            <div className="mt-2 text-xs font-semibold text-muted-foreground">
+              <span>{yesterdayOrdersCount} Orders Settled</span>
             </div>
           </div>
-          <div className="mt-3 text-2xl font-black text-foreground font-mono">{inr(avgOrderValue(totalMonthlySales, totalMonthlyOrders))}</div>
-          <div className="mt-2 text-xs text-emerald-600 font-bold">
-            Revenue / Total Monthly Bills
-          </div>
-        </div>
 
-        {/* KPI 4: Monthly Target Achievement */}
-        <div className="card-surface p-5 border-l-4 border-l-purple-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">Target Achievement</span>
-            <div className="grid size-10 place-items-center rounded-xl bg-purple-500/10 text-purple-500">
-              <Target className="size-5" />
-            </div>
-          </div>
-          <div className="mt-3 text-2xl font-black text-foreground font-mono">{targetAchievementPct}%</div>
-          <div className="mt-2 text-xs text-purple-600 font-bold">
-            {targetAchievementPct >= 100 ? "Exceeded Budget Goal 🎯" : `${100 - targetAchievementPct}% to target`}
-          </div>
-        </div>
-      </div>
-
-      {/* POWERBI CHART 1: MONTHLY SALES TREND & TARGET (BAR / AREA) */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Main Monthly Sales Trend Chart */}
-        <div className="card-surface p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          {/* Card 3: Today vs Yesterday Comparison */}
+          <div className="card-surface p-4 sm:p-5 border-l-4 sm:col-span-2 lg:col-span-1 border-l-emerald-500 relative overflow-hidden min-w-0 flex flex-col justify-between">
             <div>
-              <h2 className="font-extrabold text-base flex items-center gap-2">
-                <BarChart2 className="size-5 text-primary" /> Monthly Sales & Revenue Performance (Monthly Basis)
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Showing month-by-month sales for {selectedYear === "all" ? `${currentYear} & ${currentYear + 1}` : `Year ${selectedYear}`}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
+                  Today vs Yesterday
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black ${
+                  isPositiveGrowth ? "bg-emerald-500/15 text-emerald-600" : "bg-rose-500/15 text-rose-600"
+                }`}>
+                  {isPositiveGrowth ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                  {diffPercent >= 0 ? `+${diffPercent}%` : `${diffPercent}%`}
+                </span>
+              </div>
+              <div className="mt-3 text-xl sm:text-2xl font-black text-foreground font-mono">
+                {isPositiveGrowth ? `+${inr(diffAmount)}` : `-${inr(Math.abs(diffAmount))}`}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {isPositiveGrowth ? "Higher revenue compared to yesterday" : "Slight variance compared to yesterday shift"}
               </p>
             </div>
-            {peakMonthRecord && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-600">
-                <Flame className="size-3.5" /> Peak Month: {peakMonthRecord.month} {peakMonthRecord.year} ({inr(peakMonthRecord.sales)})
+
+            {/* Visual ratio bar */}
+            <div className="mt-4 space-y-1">
+              <div className="flex justify-between text-[11px] font-bold">
+                <span className="text-primary">Today ({Math.round((todaySales / (todaySales + yesterdaySales)) * 100)}%)</span>
+                <span className="text-blue-500">Yesterday ({Math.round((yesterdaySales / (todaySales + yesterdaySales)) * 100)}%)</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
+                <div 
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${(todaySales / (todaySales + yesterdaySales)) * 100}%` }}
+                ></div>
+                <div 
+                  className="h-full bg-blue-500 transition-all duration-500"
+                  style={{ width: `${(yesterdaySales / (todaySales + yesterdaySales)) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* WEEKLY COMPARISON COLUMN CHART (EVERYDAY SALES) */}
+        <div className="card-surface p-4 sm:p-5 min-w-0 overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 className="font-extrabold text-base sm:text-lg flex items-center gap-2 text-foreground">
+                <BarChart2 className="size-5 text-primary shrink-0" /> Weekly Everyday Sales Comparison (Column Chart)
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Day-by-day revenue comparison across Monday to Sunday (Orange bar indicates peak rush day)
+              </p>
+            </div>
+            {peakDay && (
+              <span className="self-start sm:self-auto inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-600">
+                <Sparkles className="size-3.5 shrink-0" /> Peak: {peakDay.dayFull} ({inr(peakDay.sales)})
               </span>
             )}
           </div>
 
-          <div className="h-72">
+          {/* Recharts Column Chart */}
+          <div className="h-64 sm:h-80 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredMonthlyRecords} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <BarChart data={weeklyData} margin={{ top: 15, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                 <XAxis 
-                  dataKey="month" 
+                  dataKey="day" 
                   tickLine={false} 
                   axisLine={false} 
                   fontSize={12} 
-                  tickFormatter={(val, idx) => `${val}${selectedYear === "all" ? ` '${String(filteredMonthlyRecords[idx]?.year).slice(2)}` : ""}`}
+                  fontWeight="bold"
                 />
                 <YAxis 
                   tickLine={false} 
                   axisLine={false} 
-                  fontSize={12} 
-                  tickFormatter={(v) => `₹${(v / 100000).toFixed(1)}L`} 
+                  fontSize={11} 
+                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} 
                 />
                 <Tooltip 
-                  formatter={(value: number, name: string) => [inr(value), name === "sales" ? "Monthly Sales" : "Target Sales"]}
+                  formatter={(value: number) => [inr(value), "Sales Revenue"]}
                   labelFormatter={(label, items) => {
-                    const row = items[0]?.payload as MonthlySalesRecord;
-                    return row ? `${row.month} ${row.year} • ${row.orders} Orders` : String(label);
+                    const row = items[0]?.payload;
+                    return row ? `${row.dayFull} • ${row.orders} Orders` : String(label);
                   }}
-                  contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderRadius: "0.75rem", fontSize: "12px", fontWeight: "bold" }}
+                  contentStyle={{ 
+                    backgroundColor: "var(--card)", 
+                    borderColor: "var(--border)", 
+                    borderRadius: "0.75rem", 
+                    fontSize: "12px", 
+                    fontWeight: "bold",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)" 
+                  }}
                 />
-                <Legend formatter={(val) => val === "sales" ? "Monthly Revenue (Actual)" : "Monthly Target"} />
                 <Bar dataKey="sales" name="sales" radius={[8, 8, 0, 0]}>
-                  {filteredMonthlyRecords.map((entry, index) => (
+                  {weeklyData.map((entry, index) => (
                     <Cell 
-                      key={`month-cell-${index}`} 
-                      fill={entry.sales >= (peakMonthRecord?.sales || 0) ? "#f97316" : entry.year === currentYear + 1 ? "#8b5cf6" : "var(--primary)"} 
+                      key={`weekly-cell-${index}`} 
+                      fill={entry.sales === peakDay.sales ? "#f97316" : entry.isToday ? "var(--primary)" : "#3b82f6"} 
                     />
                   ))}
                 </Bar>
-                <Line type="monotone" dataKey="target" name="target" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
-        {/* PowerBI Insight & Target Progress Card */}
-        <div className="card-surface p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-extrabold flex items-center gap-2 text-foreground uppercase tracking-wider">
-                <Target className="size-4 text-primary" /> Target vs Actual Sales
-              </h3>
-              <span className="text-xs font-black text-primary font-mono">{targetAchievementPct}%</span>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-muted-foreground font-semibold">Total Revenue Generated</span>
-                <span className="text-lg font-black text-foreground font-mono">{inr(totalMonthlySales)}</span>
+          {/* Everyday Breakdown Grid */}
+          <div className="mt-4 pt-4 border-t grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            {weeklyData.map((d) => (
+              <div 
+                key={d.day} 
+                className={`rounded-xl border p-2.5 text-center transition-all ${
+                  d.isToday 
+                    ? "bg-primary/10 border-primary shadow-sm" 
+                    : "bg-muted/20 hover:bg-muted/40"
+                }`}
+              >
+                <div className="text-[11px] font-extrabold uppercase text-muted-foreground flex items-center justify-center gap-1">
+                  <span>{d.day}</span>
+                  {d.isToday && <span className="size-1.5 rounded-full bg-primary"></span>}
+                </div>
+                <div className="text-xs sm:text-sm font-black text-foreground font-mono mt-1">{inr(d.sales)}</div>
+                <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{d.orders} orders</div>
               </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-muted-foreground font-semibold">Total Revenue Target</span>
-                <span className="text-sm font-extrabold text-muted-foreground font-mono">{inr(totalMonthlyTarget)}</span>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-xs text-muted-foreground font-semibold">Monthly Run Rate (Avg)</span>
-                <span className="text-sm font-extrabold text-primary font-mono">{inr(avgSalesPerMonth)} / mo</span>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mt-5 space-y-1.5">
-              <div className="h-3.5 w-full rounded-full bg-muted overflow-hidden">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-primary via-blue-500 to-emerald-500 transition-all duration-700"
-                  style={{ width: `${Math.min(100, targetAchievementPct)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-[11px] font-bold text-muted-foreground">
-                <span>₹0</span>
-                <span>{targetAchievementPct >= 100 ? "Goal Surpassed" : inr(Math.max(0, totalMonthlyTarget - totalMonthlySales)) + " to go"}</span>
-                <span>{inr(totalMonthlyTarget)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-xl bg-emerald-500/10 p-3.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-4 shrink-0 text-emerald-600" />
-              <span className="font-extrabold">PowerBI Executive Summary:</span>
-            </div>
-            <p className="text-[11px] leading-relaxed">
-              {selectedYear === currentYear + 1 
-                ? `Year ${currentYear + 1} records strong growth projections with average ticket size ₹550+.`
-                : `Year ${currentYear} shows consistent upward momentum from Q1 to festive peak in Q4.`}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* POWERBI CHART 2: YEAR-OVER-YEAR MONTHLY COMPARISON */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* YoY Multi-Bar Comparison Chart */}
-        <div className="card-surface p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <div>
-              <h2 className="font-extrabold text-base flex items-center gap-2">
-                <TrendingUp className="size-5 text-emerald-600" /> Year-over-Year ({currentYear} vs {currentYear + 1}) Monthly Comparison
-              </h2>
-              <p className="text-xs text-muted-foreground">Side-by-side revenue comparison across all 12 months</p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-bold">
-              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-primary"></span> {currentYear}</span>
-              <span className="flex items-center gap-1.5"><span className="size-3 rounded bg-purple-600"></span> {currentYear + 1}</span>
-            </div>
-          </div>
-
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yoyComparisonData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 100000).toFixed(1)}L`} />
-                <Tooltip 
-                  formatter={(v: number, name: string) => [inr(v), name === "salesCurr" ? `${currentYear} Sales` : `${currentYear + 1} Sales`]}
-                  contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", borderRadius: "0.75rem", fontSize: "12px", fontWeight: "bold" }}
-                />
-                <Bar dataKey="salesCurr" name="salesCurr" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="salesNext" name="salesNext" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            ))}
           </div>
         </div>
 
+        {/* Live Active Kitchen Orders Section */}
+        <div className="card-surface p-4 sm:p-5 min-w-0">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
+              <Layers className="size-4 text-primary shrink-0" /> Live Kitchen Bills
+            </h2>
+            <Link to="/orders" className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-primary hover:underline">
+              View All Bills <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
 
-        {/* Monthly Channel Breakdown (UPI vs Cash) */}
-        <div className="card-surface p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <QrCode className="size-4 text-emerald-600" /> Payment Distribution
-              </h3>
-              <span className="text-xs font-mono font-bold text-foreground">Monthly Basis</span>
+          {pendingOrders.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+              No active pending kitchen orders. Ready for next order.
             </div>
-
-            <div className="mt-4 space-y-3">
-              {monthlyPaymentSummary.map((m) => (
-                <div key={m.name} className="flex items-center justify-between rounded-xl border p-3 bg-muted/20">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`grid size-8 place-items-center rounded-lg ${m.name.includes("UPI") ? "bg-emerald-500/15 text-emerald-600" : "bg-blue-500/15 text-blue-600"}`}>
-                      {m.name.includes("UPI") ? <QrCode className="size-4" /> : <Banknote className="size-4" />}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-foreground">{m.name}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{inr(m.value)}</div>
-                    </div>
+          ) : (
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {pendingOrders.map((o) => (
+                <div key={o.id} className="rounded-xl border p-3 bg-muted/20 hover:border-primary transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-sm">Bill #{o.number}</span>
+                    <StatusBadge status={o.status} />
                   </div>
-                  <span className="text-xs font-black font-mono">
-                    {totalMonthlySales > 0 ? Math.round((m.value / totalMonthlySales) * 100) : 0}%
-                  </span>
+                  <div className="mt-1 text-xs text-muted-foreground font-medium">
+                    {o.tableId ? `Table ${o.tableId.slice(1)}` : "Takeaway"} • {o.items.length} items
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between border-t pt-2">
+                    <span className="font-extrabold text-foreground text-sm font-mono">{inr(o.total)}</span>
+                    <Link 
+                      to="/payments" 
+                      search={{ order: o.id }} 
+                      className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
+                    >
+                      Pay Bill
+                    </Link>
+                  </div>
                 </div>
               ))}
-
-              {/* Dine-in vs Takeaway */}
-              <div className="pt-2 border-t space-y-2">
-                <div className="text-[11px] font-extrabold uppercase text-muted-foreground">Order Channels</div>
-                {monthlyDineVsTakeaway.map((c) => (
-                  <div key={c.name} className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Utensils className="size-3 text-muted-foreground" /> {c.name}
-                    </span>
-                    <span className="font-bold font-mono text-foreground">{inr(c.value)}</span>
-                  </div>
-                ))}
-              </div>
             </div>
-          </div>
-
-          <div className="mt-4 h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={monthlyPaymentSummary}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={25}
-                  outerRadius={45}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {monthlyPaymentSummary.map((_, index) => (
-                    <Cell key={`pay-pie-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => inr(value)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          )}
         </div>
-      </div>
-
-      {/* POWERBI CATEGORY SALES & MONTHLY MATRIX LEDGER TABLE */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Category Contribution */}
-        <div className="card-surface p-5">
-          <div className="flex items-center justify-between border-b pb-3">
-            <h3 className="font-extrabold text-base flex items-center gap-2">
-              <Layers className="size-4 text-purple-500" /> Monthly Category Sales
-            </h3>
-            <span className="text-xs font-bold text-muted-foreground">Revenue Split</span>
-          </div>
-
-          <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto pr-1">
-            {monthlyCategoryBreakdown.map((cat) => (
-              <div key={cat.name} className="space-y-1">
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-foreground">{cat.name}</span>
-                  <span className="text-primary font-mono">{inr(cat.revenue)} ({cat.pct}%)</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div 
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${cat.pct}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Full Monthly Sales Matrix Table */}
-        <div className="card-surface p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <div>
-              <h2 className="font-extrabold text-base flex items-center gap-2">
-                <Calendar className="size-4 text-primary" /> Monthly Sales Ledger Matrix (PowerBI Table)
-              </h2>
-              <p className="text-xs text-muted-foreground">Detailed monthly breakdown of orders, channels, revenue and growth</p>
-            </div>
-            <span className="text-xs font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-              {filteredMonthlyRecords.length} Month Records
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b bg-muted/40 text-muted-foreground font-extrabold uppercase tracking-wider">
-                <tr>
-                  <th className="p-2.5">Month / Year</th>
-                  <th className="p-2.5 text-center">Orders</th>
-                  <th className="p-2.5 text-right">Dine-In</th>
-                  <th className="p-2.5 text-right">Takeaway</th>
-                  <th className="p-2.5 text-right">Monthly Sales</th>
-                  <th className="p-2.5 text-right">Target</th>
-                  <th className="p-2.5 text-center">MoM Growth</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y font-medium">
-                {filteredMonthlyRecords.map((r, idx) => (
-                  <tr key={`${r.year}-${r.month}-${idx}`} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-2.5 font-bold text-foreground">
-                      {r.month} {r.year}
-                    </td>
-                    <td className="p-2.5 text-center font-mono">{r.orders}</td>
-                    <td className="p-2.5 text-right text-muted-foreground font-mono">{inr(r.dineIn)}</td>
-                    <td className="p-2.5 text-right text-muted-foreground font-mono">{inr(r.takeaway)}</td>
-                    <td className="p-2.5 text-right font-black text-primary font-mono">{inr(r.sales)}</td>
-                    <td className="p-2.5 text-right text-muted-foreground font-mono">{inr(r.target)}</td>
-                    <td className="p-2.5 text-center">
-                      <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                        r.momGrowth >= 0 ? "bg-emerald-500/15 text-emerald-600" : "bg-rose-500/15 text-rose-600"
-                      }`}>
-                        {r.momGrowth >= 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                        {r.momGrowth > 0 ? `+${r.momGrowth}%` : `${r.momGrowth}%`}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Live Kitchen Orders Status (Terminal Active Bills) */}
-      <div className="card-surface mt-6 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-base flex items-center gap-2">
-            <Layers className="size-4 text-primary" /> Live Active Kitchen Orders
-          </h2>
-          <Link to="/orders" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-            View All Order Tickets <ArrowUpRight className="size-4" />
-          </Link>
-        </div>
-
-        {pendingOrders.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
-            No active kitchen orders in queue. Use &quot;+ Quick Bill&quot; to place an order.
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {pendingOrders.map((o) => (
-              <div key={o.id} className="rounded-xl border p-4 bg-muted/20 hover:border-primary transition-colors">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-base">Bill #{o.number}</span>
-                  <StatusBadge status={o.status} />
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground font-medium">
-                  {o.tableId ? `Table ${o.tableId.slice(1)}` : "Takeaway"} • {o.items.length} items
-                </div>
-                <div className="mt-1 text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, {new Date(o.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t pt-2">
-                  <span className="font-extrabold text-foreground">{inr(o.total)}</span>
-                  <Link 
-                    to="/payments" 
-                    search={{ order: o.id }} 
-                    className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                  >
-                    Pay Bill
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </AppShell>
   );
-}
-
-function avgOrderValue(sales: number, orders: number) {
-  if (orders <= 0) return 0;
-  return Math.round(sales / orders);
 }
