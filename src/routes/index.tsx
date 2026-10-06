@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const DEFAULT_FABRIC_URL = "https://app.fabric.microsoft.com/groups/me/reports/62fde83f-2e0d-400d-8b54-85c988f5a7d4/1eeb52d1680cd4017b76?experience=fabric-developer";
+const DEFAULT_FABRIC_URL = "https://app.fabric.microsoft.com/groups/me/reports/c9b4ed0b-775d-4f8a-b056-a3b7c6c6683d/1eeb52d1680cd4017b76?experience=fabric-developer";
 
 const DAYS_OF_WEEK = [
   { day: "Mon", dayIndex: 1, dayFull: "Monday" },
