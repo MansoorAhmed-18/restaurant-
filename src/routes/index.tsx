@@ -58,82 +58,90 @@ export function Dashboard() {
     return "Good evening";
   };
 
-  // Safe orders list
+  // Date helper for accurate local date comparison (prevents UTC timezone shift issues)
+  const isSameDate = (d1: string | Date | undefined, d2: string | Date): boolean => {
+    if (!d1) return false;
+    const a = new Date(d1);
+    const b = new Date(d2);
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return false;
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
+  // Safe orders list (all non-cancelled orders)
   const safeOrders = orders || [];
-  
-  // All completed or paid orders directly from pos-store (100% synchronized with Orders section)
-  const allCompletedOrders = useMemo(() => {
-    return safeOrders.filter((o) => o && (o.status === "completed" || o.paymentStatus === "paid"));
+  const validOrders = useMemo(() => {
+    return safeOrders.filter((o) => o && o.status !== "cancelled");
   }, [safeOrders]);
 
   const pendingOrders = useMemo(() => {
     return safeOrders.filter((o) => o && (o.status === "pending" || o.status === "preparing"));
   }, [safeOrders]);
 
-  // Date strings for today and yesterday
+  // Current local date & yesterday's local date
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  const yesterdayDate = new Date(Date.now() - 86400000);
-  const yesterdayStr = yesterdayDate.toISOString().split("T")[0];
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
 
-  // Group actual completed orders by date
-  const todayCompletedOrders = useMemo(() => {
-    const matched = allCompletedOrders.filter((o) => o.createdAt && o.createdAt.startsWith(todayStr));
-    // If all completed orders belong to current active session, use all completed orders
-    return matched.length > 0 ? matched : allCompletedOrders;
-  }, [allCompletedOrders, todayStr]);
+  // Group actual valid orders by exact local date
+  const todayOrders = useMemo(() => {
+    return validOrders.filter((o) => isSameDate(o.createdAt, now));
+  }, [validOrders, now]);
 
-  const yesterdayCompletedOrders = useMemo(() => {
-    return allCompletedOrders.filter((o) => o.createdAt && o.createdAt.startsWith(yesterdayStr));
-  }, [allCompletedOrders, yesterdayStr]);
+  const yesterdayOrders = useMemo(() => {
+    return validOrders.filter((o) => isSameDate(o.createdAt, yesterdayDate));
+  }, [validOrders, yesterdayDate]);
 
   // EXACT Real Values synchronized with Orders section
   const todaySales = useMemo(() => {
-    return todayCompletedOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
-  }, [todayCompletedOrders]);
+    return todayOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [todayOrders]);
 
-  const todayOrdersCount = todayCompletedOrders.length;
+  const todayOrdersCount = todayOrders.length;
+  const todayPaidOrdersCount = useMemo(() => {
+    return todayOrders.filter((o) => o.paymentStatus === "paid" || o.status === "completed").length;
+  }, [todayOrders]);
 
-  // Yesterday actual sales or benchmark if fresh database
+  // Yesterday actual sales directly from real orders
   const yesterdaySales = useMemo(() => {
-    const sum = yesterdayCompletedOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
-    // If no past orders in local storage, use realistic baseline
-    return sum > 0 ? sum : Math.max(Math.round(todaySales * 0.88), 0);
-  }, [yesterdayCompletedOrders, todaySales]);
+    return yesterdayOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [yesterdayOrders]);
 
-  const yesterdayOrdersCount = useMemo(() => {
-    return yesterdayCompletedOrders.length > 0 
-      ? yesterdayCompletedOrders.length 
-      : Math.max(Math.round(todayOrdersCount * 0.9), 0);
-  }, [yesterdayCompletedOrders, todayOrdersCount]);
+  const yesterdayOrdersCount = yesterdayOrders.length;
 
   // Comparison metrics
   const diffAmount = todaySales - yesterdaySales;
-  const diffPercent = yesterdaySales > 0 ? Number(((diffAmount / yesterdaySales) * 100).toFixed(1)) : 0;
+  const diffPercent = yesterdaySales > 0 
+    ? Number(((diffAmount / yesterdaySales) * 100).toFixed(1)) 
+    : (todaySales > 0 ? 100 : 0);
   const isPositiveGrowth = diffAmount >= 0;
 
-  // Weekly everyday column chart dynamically calculated from real orders
-  const currentDayIndex = now.getDay(); // 0 is Sunday, 1 is Monday, etc.
+  // Calculate current week's Monday for the column chart
+  const startOfWeek = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay(); // 0 is Sun, 1 is Mon...
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
+  // Weekly everyday column chart dynamically calculated from real orders of the current week
   const weeklyData = useMemo(() => {
-    return DAYS_OF_WEEK.map((d) => {
-      const isToday = d.dayIndex === currentDayIndex;
-      
-      // Filter real completed orders for this day of week
-      const dayOrders = allCompletedOrders.filter((o) => {
-        if (!o?.createdAt) return false;
-        const ordDay = new Date(o.createdAt).getDay();
-        return ordDay === d.dayIndex;
-      });
+    return DAYS_OF_WEEK.map((d, index) => {
+      const targetDate = new Date(startOfWeek);
+      targetDate.setDate(startOfWeek.getDate() + index);
 
-      let sales = dayOrders.reduce((s, o) => s + (Number(o?.total) || 0), 0);
-      let orderCount = dayOrders.length;
+      const isToday = isSameDate(targetDate, now);
 
-      // If this is today, ensure it matches today's exact live total
-      if (isToday) {
-        sales = todaySales;
-        orderCount = todayOrdersCount;
-      }
+      // Filter real orders for this specific date in the current week
+      const dayOrders = validOrders.filter((o) => isSameDate(o?.createdAt, targetDate));
+
+      const sales = dayOrders.reduce((s, o) => s + (Number(o?.total) || 0), 0);
+      const orderCount = dayOrders.length;
 
       return {
         day: d.day,
@@ -143,7 +151,7 @@ export function Dashboard() {
         isToday,
       };
     });
-  }, [allCompletedOrders, currentDayIndex, todaySales, todayOrdersCount]);
+  }, [validOrders, startOfWeek, now]);
 
   const peakDay = useMemo(() => {
     const list = [...weeklyData];
@@ -159,7 +167,7 @@ export function Dashboard() {
     }
     setTimeout(() => {
       setIsRefreshing(false);
-      toast.success(`Dashboard synced! ${allCompletedOrders.length} completed orders loaded.`);
+      toast.success(`Dashboard synced! ${validOrders.length} orders loaded.`);
     }, 500);
   };
 
@@ -297,7 +305,10 @@ export function Dashboard() {
             </div>
             <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(todaySales)}</div>
             <div className="mt-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
-              <span className="font-bold text-foreground">{todayOrdersCount} Orders Completed</span>
+              <span className="font-bold text-foreground">
+                {todayOrdersCount} {todayOrdersCount === 1 ? "Order" : "Orders"}
+                {todayOrdersCount > 0 && todayPaidOrdersCount < todayOrdersCount ? ` (${todayPaidOrdersCount} Paid)` : ""}
+              </span>
               <span className="font-bold text-primary font-mono">
                 {todayOrdersCount > 0 ? inr(Math.round(todaySales / todayOrdersCount)) : "₹0"} Avg/Bill
               </span>
@@ -316,7 +327,7 @@ export function Dashboard() {
             </div>
             <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(yesterdaySales)}</div>
             <div className="mt-2 text-xs font-semibold text-muted-foreground">
-              <span>{yesterdayOrdersCount} Orders Settled</span>
+              <span>{yesterdayOrdersCount} {yesterdayOrdersCount === 1 ? "Order" : "Orders"}</span>
             </div>
           </div>
 
