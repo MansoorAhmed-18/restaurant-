@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { consolidateOrderItems } from "./utils";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gxwarlojidcebchmxkpz.supabase.co";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4d2FybG9qaWRjZWJjaG14a3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjI1NzksImV4cCI6MjEwNTk5ODU3OX0.8ICJuZsQyeqKlenIkN9AUVuBtwA8mAMciQN3ljUyotk";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
