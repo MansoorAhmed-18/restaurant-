@@ -13,29 +13,20 @@ export function buildWhatsAppBillText(order: Order, customerName?: string): stri
     .map((i) => `  • ${i.name} x${i.qty} — ₹${i.price * i.qty}`)
     .join("\n");
 
-  const isDineIn = Boolean(order.tableId);
-  const typeText = isDineIn ? `Table ${order.tableId?.replace(/^t/, "") || ""}` : "Takeaway Counter";
-
   return `🧾 *TAN'S KITCHEN - OFFICIAL RECEIPT* 🧾
 
 Hello! Thank you for dining with us.
 
 *Invoice No:* INV-${order.number}
 *Date:* ${dateStr}
-*Order Type:* ${typeText}
 *Payment Method:* ${(order.paymentMethod || "PAID").toUpperCase()}
 
 *ITEMS ORDERED:*
 ${itemsText}
 
 ---------------------------------
-*Subtotal:* ₹${order.subtotal}
-*GST Tax (5%):* ₹${order.tax}
 *TOTAL AMOUNT PAID:* ₹${order.total}
 ---------------------------------
-
-📄 *View Digital Receipt:*
-https://tanskitchen.vercel.app/invoice/${order.id}
 
 Thank you for visiting Tan's Kitchen! 🧡`;
 }
