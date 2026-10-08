@@ -9,7 +9,6 @@ import { getActiveStaff, getStaffInitials, type StaffUser } from "@/lib/auth";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pos", label: "New Order", icon: ShoppingBag },
-  { to: "/tables", label: "Tables", icon: Armchair },
   { to: "/orders", label: "Orders", icon: ClipboardList },
   { to: "/menu", label: "Menu", icon: UtensilsCrossed },
   { to: "/payments", label: "Payments", icon: CreditCard },
@@ -93,7 +92,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         {[
           { to: "/pos", label: "POS Bill", icon: ShoppingBag },
           { to: "/orders", label: "Orders", icon: ClipboardList },
-          { to: "/tables", label: "Tables", icon: Armchair },
           { to: "/menu", label: "Menu", icon: UtensilsCrossed },
           { to: "/", label: "Home", icon: LayoutDashboard },
         ].map(({ to, label, icon: Icon }) => (

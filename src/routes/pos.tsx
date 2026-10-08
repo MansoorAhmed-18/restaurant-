@@ -195,20 +195,6 @@ export function Pos() {
 
 
 
-          {/* Order Type / Table */}
-          <div>
-            <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">Select Order Type / Table</label>
-            <select 
-              value={pos.tableId ?? ""} 
-              onChange={(e) => pos.setTableId(e.target.value || undefined)} 
-              className="h-10 w-full rounded-xl border bg-card px-3 text-xs font-bold shadow-sm"
-            >
-              <option value="">Takeaway / Parcel Counter</option>
-              {pos.tables.filter((t) => t.status === "available").map((t) => (
-                <option key={t.id} value={t.id}>Dine-in Table {t.name} ({t.seats} Seats)</option>
-              ))}
-            </select>
-          </div>
 
           {pos.cart.length === 0 ? (
             <div className="py-10 text-center">

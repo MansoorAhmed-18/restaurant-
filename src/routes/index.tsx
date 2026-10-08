@@ -486,7 +486,7 @@ export function Dashboard() {
                     <StatusBadge status={o.status} />
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground font-medium">
-                    {o.tableId ? `Table ${o.tableId.slice(1)}` : "Takeaway"} • {o.items.length} items
+                    {o.items.length} {o.items.length === 1 ? "item" : "items"}
                   </div>
                   <div className="mt-2.5 flex items-center justify-between border-t pt-2">
                     <span className="font-extrabold text-foreground text-sm font-mono">{inr(o.total)}</span>
