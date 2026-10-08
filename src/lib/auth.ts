@@ -1,3 +1,10 @@
+import { 
+  fetchStaffAccountsFromSupabase, 
+  syncStaffAccountToSupabase, 
+  deleteStaffAccountFromSupabase, 
+  isSupabaseConfigured 
+} from "./supabase";
+
 export type StaffRole = "Manager" | "Cashier" | "Chef / Kitchen";
 
 export interface StaffUser {
@@ -82,6 +89,40 @@ export function saveRegisteredAccounts(accounts: StaffAccount[]) {
   }
 }
 
+/**
+ * Hydrates accounts from Supabase cloud database so all devices (phones, tablets, laptops) stay 100% in sync
+ */
+export async function syncAccountsFromCloud(): Promise<StaffAccount[]> {
+  if (!isSupabaseConfigured) return getRegisteredAccounts();
+
+  try {
+    const remoteAccounts = await fetchStaffAccountsFromSupabase();
+    if (remoteAccounts && Array.isArray(remoteAccounts) && remoteAccounts.length > 0) {
+      const local = getRegisteredAccounts();
+      const map = new Map<string, StaffAccount>();
+      
+      // Add local defaults first
+      local.forEach((a) => map.set(a.username.toLowerCase(), a));
+      // Override with remote cloud accounts
+      remoteAccounts.forEach((ra) => map.set(ra.username.toLowerCase(), ra));
+
+      const merged = Array.from(map.values());
+      saveRegisteredAccounts(merged);
+      return merged;
+    } else {
+      // Seed cloud with initial accounts if empty in Supabase
+      const local = getRegisteredAccounts();
+      for (const acc of local) {
+        await syncStaffAccountToSupabase(acc);
+      }
+      return local;
+    }
+  } catch (err) {
+    console.error("Cloud account sync error:", err);
+    return getRegisteredAccounts();
+  }
+}
+
 export function getManagerAccount(): StaffAccount {
   const accounts = getRegisteredAccounts();
   const mgr = accounts.find((a) => a.role === "Manager");
@@ -98,27 +139,30 @@ export function updateManagerCredentials(name: string, username: string, passwor
   }
 
   const accounts = getRegisteredAccounts();
-  // Check if username conflicts with another account
   const conflict = accounts.find((a) => a.role !== "Manager" && a.username.toLowerCase() === trimmedUser);
   if (conflict) {
     return { success: false, message: `Username "${trimmedUser}" is already assigned to a staff member.` };
   }
 
+  let updatedMgr: StaffAccount | null = null;
   const updated = accounts.map((a) => {
     if (a.role === "Manager") {
-      return {
+      updatedMgr = {
         ...a,
         name: trimmedName,
         username: trimmedUser,
         password: trimmedPass,
       };
+      return updatedMgr;
     }
     return a;
   });
 
   saveRegisteredAccounts(updated);
+  if (updatedMgr) {
+    syncStaffAccountToSupabase(updatedMgr);
+  }
 
-  // Update active session if currently logged in as manager
   const current = getActiveStaff();
   if (current && current.role === "Manager") {
     setActiveStaff({
@@ -158,6 +202,10 @@ export function addStaffAccount(name: string, username: string, password: string
 
   const updated = [...accounts, newStaff];
   saveRegisteredAccounts(updated);
+  
+  // Sync to Supabase cloud database immediately
+  syncStaffAccountToSupabase(newStaff);
+
   return { success: true };
 }
 
@@ -172,10 +220,14 @@ export function removeStaffAccount(id: string): { success: boolean; message?: st
 
   const updated = accounts.filter((a) => a.id !== id);
   saveRegisteredAccounts(updated);
+  
+  // Remove from Supabase cloud database
+  deleteStaffAccountFromSupabase(id);
+
   return { success: true };
 }
 
-export function authenticate(username: string, password: string): { success: boolean; staff?: StaffUser; message?: string } {
+export async function authenticate(username: string, password: string): Promise<{ success: boolean; staff?: StaffUser; message?: string }> {
   const trimmedUser = username.trim().toLowerCase();
   const trimmedPass = password.trim();
 
@@ -183,8 +235,18 @@ export function authenticate(username: string, password: string): { success: boo
     return { success: false, message: "Please enter both Login ID and Password." };
   }
 
-  const accounts = getRegisteredAccounts();
-  const match = accounts.find((a) => a.username.toLowerCase() === trimmedUser && a.password === trimmedPass);
+  // 1. Sync latest accounts from Supabase cloud to make sure mobile has newest logins
+  let accounts = getRegisteredAccounts();
+  try {
+    const cloudAccounts = await syncAccountsFromCloud();
+    if (cloudAccounts && cloudAccounts.length > 0) {
+      accounts = cloudAccounts;
+    }
+  } catch {
+    // Fallback to local
+  }
+
+  const match = accounts.find((a) => a.username.toLowerCase().trim() === trimmedUser && a.password.trim() === trimmedPass);
 
   if (!match) {
     return { success: false, message: "Invalid Login ID or Password. Access denied." };

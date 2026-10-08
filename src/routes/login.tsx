@@ -7,7 +7,7 @@ import {
 import { toast } from "sonner";
 import { Logo } from "@/components/pos/AppShell";
 import { meta } from "@/lib/meta";
-import { authenticate, isAuthenticated } from "@/lib/auth";
+import { authenticate, isAuthenticated, syncAccountsFromCloud } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => meta("Staff Sign In", "Manager, Cashier & Kitchen authentication portal."),
@@ -24,20 +24,25 @@ export function Login() {
   useEffect(() => {
     if (isAuthenticated()) {
       nav({ to: "/" });
+      return;
     }
+    // Background sync latest staff accounts from Supabase database
+    syncAccountsFromCloud();
   }, [nav]);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+
+    if (!cleanUser || !cleanPass) {
       toast.error("Please enter both Login ID and Password.");
       return;
     }
 
     setLoading(true);
-
-    setTimeout(() => {
-      const res = authenticate(username, password);
+    try {
+      const res = await authenticate(cleanUser, cleanPass);
       setLoading(false);
 
       if (!res.success || !res.staff) {
@@ -47,7 +52,10 @@ export function Login() {
 
       toast.success(`Welcome, ${res.staff.name} (${res.staff.role})!`);
       nav({ to: "/" });
-    }, 400);
+    } catch {
+      setLoading(false);
+      toast.error("Authentication failed. Please check credentials and try again.");
+    }
   };
 
   return (

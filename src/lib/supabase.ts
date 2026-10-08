@@ -288,3 +288,62 @@ export async function fetchCategoriesFromSupabase() {
     return null;
   }
 }
+
+/**
+ * Fetch all registered staff & cashier accounts from Supabase database
+ */
+export async function fetchStaffAccountsFromSupabase() {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from("staff_accounts").select("*");
+    if (error || !data) return null;
+    return data.map((a: any) => ({
+      id: a.id,
+      username: a.username,
+      name: a.name,
+      role: a.role,
+      password: a.password,
+      createdAt: a.created_at || new Date().toISOString(),
+      createdBy: a.created_by,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sync staff account to Supabase database
+ */
+export async function syncStaffAccountToSupabase(account: any) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("staff_accounts").upsert(
+      {
+        id: account.id,
+        username: account.username.toLowerCase().trim(),
+        name: account.name.trim(),
+        role: account.role,
+        password: account.password.trim(),
+        created_at: account.createdAt || new Date().toISOString(),
+        created_by: account.createdBy || null,
+      },
+      { onConflict: "id" }
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Delete staff account from Supabase database
+ */
+export async function deleteStaffAccountFromSupabase(id: string) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("staff_accounts").delete().eq("id", id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
