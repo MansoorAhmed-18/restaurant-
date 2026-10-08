@@ -1,8 +1,10 @@
+export type StaffRole = "Manager" | "Cashier" | "Chef / Kitchen";
+
 export interface StaffUser {
   id?: string;
   name: string;
   username: string;
-  role: "Manager" | "Cashier";
+  role: StaffRole;
   email?: string;
   shift?: string;
 }
@@ -11,8 +13,8 @@ export interface StaffAccount {
   id: string;
   username: string;
   name: string;
-  role: "Manager" | "Cashier";
-  password: string; // Plain/hashed password for POS access
+  role: StaffRole;
+  password: string; // Plain/secure password for POS & Kitchen access
   createdAt: string;
   createdBy?: string;
 }
@@ -21,12 +23,12 @@ const STORAGE_ACCOUNTS_KEY = "res_pos_staff_accounts";
 const STORAGE_SESSION_KEY = "pos_active_staff";
 const STORAGE_TOKEN_KEY = "pos_auth_token";
 
-// Default initial manager account if fresh install
+// Master Manager, Cashier, and Kitchen initial accounts
 const DEFAULT_INITIAL_ACCOUNTS: StaffAccount[] = [
   {
     id: "mgr_1",
     username: "manager",
-    name: "Restaurant Manager",
+    name: "Mansoor Ahmed",
     role: "Manager",
     password: "admin",
     createdAt: new Date().toISOString(),
@@ -36,6 +38,15 @@ const DEFAULT_INITIAL_ACCOUNTS: StaffAccount[] = [
     username: "cashier",
     name: "Front Cashier",
     role: "Cashier",
+    password: "123",
+    createdAt: new Date().toISOString(),
+    createdBy: "manager",
+  },
+  {
+    id: "ktc_1",
+    username: "chef",
+    name: "Head Chef",
+    role: "Chef / Kitchen",
     password: "123",
     createdAt: new Date().toISOString(),
     createdBy: "manager",
@@ -50,7 +61,13 @@ export function getRegisteredAccounts(): StaffAccount[] {
       localStorage.setItem(STORAGE_ACCOUNTS_KEY, JSON.stringify(DEFAULT_INITIAL_ACCOUNTS));
       return DEFAULT_INITIAL_ACCOUNTS;
     }
-    return JSON.parse(raw);
+    const parsed: StaffAccount[] = JSON.parse(raw);
+    // Ensure manager always exists
+    if (!parsed.some((a) => a.role === "Manager")) {
+      parsed.unshift(DEFAULT_INITIAL_ACCOUNTS[0]);
+      localStorage.setItem(STORAGE_ACCOUNTS_KEY, JSON.stringify(parsed));
+    }
+    return parsed;
   } catch {
     return DEFAULT_INITIAL_ACCOUNTS;
   }
@@ -65,66 +82,81 @@ export function saveRegisteredAccounts(accounts: StaffAccount[]) {
   }
 }
 
-export function hasManagerAccount(): boolean {
+export function getManagerAccount(): StaffAccount {
   const accounts = getRegisteredAccounts();
-  return accounts.some((a) => a.role === "Manager");
+  const mgr = accounts.find((a) => a.role === "Manager");
+  return mgr || DEFAULT_INITIAL_ACCOUNTS[0];
 }
 
-export function registerManager(name: string, username: string, password: string): { success: boolean; message?: string } {
+export function updateManagerCredentials(name: string, username: string, password: string): { success: boolean; message?: string } {
   const trimmedUser = username.trim().toLowerCase();
   const trimmedName = name.trim();
   const trimmedPass = password.trim();
 
   if (!trimmedName || !trimmedUser || !trimmedPass) {
-    return { success: false, message: "All fields are required." };
+    return { success: false, message: "All Manager fields are required." };
   }
 
   const accounts = getRegisteredAccounts();
-  const exists = accounts.find((a) => a.username.toLowerCase() === trimmedUser);
-  if (exists) {
-    return { success: false, message: `Username "${trimmedUser}" is already taken.` };
+  // Check if username conflicts with another account
+  const conflict = accounts.find((a) => a.role !== "Manager" && a.username.toLowerCase() === trimmedUser);
+  if (conflict) {
+    return { success: false, message: `Username "${trimmedUser}" is already assigned to a staff member.` };
   }
 
-  const newMgr: StaffAccount = {
-    id: `mgr_${Date.now()}`,
-    name: trimmedName,
-    username: trimmedUser,
-    role: "Manager",
-    password: trimmedPass,
-    createdAt: new Date().toISOString(),
-  };
+  const updated = accounts.map((a) => {
+    if (a.role === "Manager") {
+      return {
+        ...a,
+        name: trimmedName,
+        username: trimmedUser,
+        password: trimmedPass,
+      };
+    }
+    return a;
+  });
 
-  const updated = [newMgr, ...accounts];
   saveRegisteredAccounts(updated);
+
+  // Update active session if currently logged in as manager
+  const current = getActiveStaff();
+  if (current && current.role === "Manager") {
+    setActiveStaff({
+      ...current,
+      name: trimmedName,
+      username: trimmedUser,
+    });
+  }
+
   return { success: true };
 }
 
-export function addCashierAccount(name: string, username: string, password: string, createdByManager: string): { success: boolean; message?: string } {
+export function addStaffAccount(name: string, username: string, password: string, role: "Cashier" | "Chef / Kitchen", createdByManager: string): { success: boolean; message?: string } {
   const trimmedUser = username.trim().toLowerCase();
   const trimmedName = name.trim();
   const trimmedPass = password.trim();
 
   if (!trimmedName || !trimmedUser || !trimmedPass) {
-    return { success: false, message: "Please fill in all cashier details." };
+    return { success: false, message: "Please fill in all staff details." };
   }
 
   const accounts = getRegisteredAccounts();
   const exists = accounts.find((a) => a.username.toLowerCase() === trimmedUser);
   if (exists) {
-    return { success: false, message: `Cashier ID/Username "${trimmedUser}" is already taken.` };
+    return { success: false, message: `Login ID / Username "${trimmedUser}" is already in use.` };
   }
 
-  const newCashier: StaffAccount = {
-    id: `csh_${Date.now()}`,
+  const newStaff: StaffAccount = {
+    id: `${role === "Cashier" ? "csh" : "ktc"}_${Date.now()}`,
     name: trimmedName,
     username: trimmedUser,
-    role: "Cashier",
+    role,
     password: trimmedPass,
     createdAt: new Date().toISOString(),
     createdBy: createdByManager,
   };
 
-  const updated = [...accounts, newCashier];
+  const updated = [...accounts, newStaff];
   saveRegisteredAccounts(updated);
   return { success: true };
 }
@@ -134,12 +166,8 @@ export function removeStaffAccount(id: string): { success: boolean; message?: st
   const target = accounts.find((a) => a.id === id);
   if (!target) return { success: false, message: "Account not found." };
   
-  // Don't remove if it's the only manager
   if (target.role === "Manager") {
-    const managers = accounts.filter((a) => a.role === "Manager");
-    if (managers.length <= 1) {
-      return { success: false, message: "Cannot delete the only Manager account." };
-    }
+    return { success: false, message: "The Master Manager account cannot be deleted." };
   }
 
   const updated = accounts.filter((a) => a.id !== id);
@@ -152,14 +180,14 @@ export function authenticate(username: string, password: string): { success: boo
   const trimmedPass = password.trim();
 
   if (!trimmedUser || !trimmedPass) {
-    return { success: false, message: "Please enter both Username and Password." };
+    return { success: false, message: "Please enter both Login ID and Password." };
   }
 
   const accounts = getRegisteredAccounts();
   const match = accounts.find((a) => a.username.toLowerCase() === trimmedUser && a.password === trimmedPass);
 
   if (!match) {
-    return { success: false, message: "Invalid Username/ID or Password. Access denied." };
+    return { success: false, message: "Invalid Login ID or Password. Access denied." };
   }
 
   const staffUser: StaffUser = {
