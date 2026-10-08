@@ -1,66 +1,105 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Loader2, Lock, User, KeyRound, ShieldCheck, UtensilsCrossed } from "lucide-react";
+import { useState, useEffect } from "react";
+import { 
+  Loader2, Lock, User, ShieldCheck, KeyRound, 
+  Sparkles, CheckCircle2, Eye, EyeOff, UserPlus 
+} from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/pos/AppShell";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { meta } from "@/lib/meta";
 import { cn } from "@/lib/utils";
-import { setActiveStaff } from "@/lib/auth";
+import { 
+  authenticate, registerManager, getRegisteredAccounts, 
+  hasManagerAccount, isAuthenticated 
+} from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
-  head: () => meta("Staff Sign In", "Restaurant staff & manager portal sign-in."),
+  head: () => meta("Secure Staff Sign In", "Manager & Cashier authentication portal for restaurant POS."),
   component: Login,
 });
 
 export function Login() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [loginMode, setLoginMode] = useState<"passcode" | "email">("passcode");
-  const [role, setRole] = useState<"Cashier" | "Manager" | "Kitchen Admin">("Manager");
-  const [staffName, setStaffName] = useState("Mansoor Ahmed");
-  const [passcode, setPasscode] = useState("");
-  const [email, setEmail] = useState("mansoor@spiceroute.in");
-  const [password, setPassword] = useState("demo1234");
-  const [shift, setShift] = useState("Morning Shift");
+  const [mode, setMode] = useState<"login" | "register">("login");
+  
+  // Login Form States
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Register Master Manager Form States
+  const [regName, setRegName] = useState("");
+  const [regUsername, setRegUsername] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+
+  const accounts = getRegisteredAccounts();
+
+  useEffect(() => {
+    // If already authenticated, redirect to home
+    if (isAuthenticated()) {
+      nav({ to: "/" });
+    }
+  }, [nav]);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffName.trim()) {
-      toast.error("Please enter your staff name.");
-      return;
-    }
-    if (loginMode === "passcode" && passcode.length < 4) {
-      toast.error("Please enter a 4-digit staff passcode.");
-      return;
-    }
-    if (loginMode === "email" && (!email || !password)) {
-      toast.error("Please enter both email and password.");
+    if (!username.trim() || !password.trim()) {
+      toast.error("Please enter both Username/ID and Password.");
       return;
     }
 
     setLoading(true);
-    toast.info(`Authenticating ${staffName} (${role})...`);
-
-    // Save dynamic staff session
-    setActiveStaff({
-      name: staffName.trim(),
-      role,
-      email,
-      shift,
-    });
 
     setTimeout(() => {
+      const res = authenticate(username, password);
       setLoading(false);
-      toast.success(`Welcome, ${staffName.trim()} (${role} - ${shift})!`);
+
+      if (!res.success || !res.staff) {
+        toast.error(res.message || "Invalid Username/ID or Password.");
+        return;
+      }
+
+      toast.success(`Welcome back, ${res.staff.name} (${res.staff.role})!`);
       nav({ to: "/" });
-    }, 500);
+    }, 400);
+  };
+
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regUsername.trim() || !regPassword.trim()) {
+      toast.error("Please fill in all registration fields.");
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      toast.error("Passwords do not match. Please re-enter.");
+      return;
+    }
+    if (regPassword.length < 4) {
+      toast.error("Password must be at least 4 characters.");
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      const res = registerManager(regName, regUsername, regPassword);
+      setLoading(false);
+
+      if (!res.success) {
+        toast.error(res.message || "Failed to register manager.");
+        return;
+      }
+
+      toast.success("Master Manager Account created! Logging you in...");
+      authenticate(regUsername, regPassword);
+      nav({ to: "/" });
+    }, 400);
   };
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2 bg-background">
-      {/* Left Branding Showcase Panel */}
+      {/* Left Branding Panel */}
       <div className="hidden flex-col justify-between bg-gradient-to-br from-primary via-primary/95 to-orange-600 p-12 text-primary-foreground lg:flex relative overflow-hidden">
         <div className="absolute -right-20 -bottom-20 size-96 rounded-full bg-white/10 blur-3xl pointer-events-none"></div>
         
@@ -72,180 +111,236 @@ export function Login() {
               <div className="text-xs opacity-80">Spice Route Kitchen Systems</div>
             </div>
           </div>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-md">v2.4 Pro</span>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-md">Secure POS v3.0</span>
         </div>
 
         <div className="z-10 my-auto py-12">
-          <div className="text-7xl mb-6">🍛 🥘 🍢 🍹</div>
+          <div className="text-7xl mb-6">🔒 🍛 🧾</div>
           <h2 className="text-4xl font-black leading-tight tracking-tight">
-            Fast Billing. Real-Time Collections.<br />Zero Lag.
+            Role-Based Authentication & Complete POS Security.
           </h2>
           <p className="mt-4 max-w-md text-base opacity-90 leading-relaxed font-medium">
-            Complete billing software built for high-volume restaurant floors, table order tracking, and live Supabase + Power BI analytics.
+            Strict access control for Managers & Cashiers. Protects your live revenue, kitchen tickets, and billing terminal against unauthorized URL visits.
           </p>
 
-          <div className="mt-8 flex items-center gap-6 border-t border-white/20 pt-6">
-            <div>
-              <div className="text-2xl font-black">₹3,024</div>
-              <div className="text-xs opacity-80">Today&apos;s Net Collection</div>
+          <div className="mt-8 space-y-3 border-t border-white/20 pt-6">
+            <div className="flex items-center gap-2.5 text-sm font-bold">
+              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+              <span>Manager Master Account & Cashier Credentials</span>
             </div>
-            <div className="h-8 w-px bg-white/20"></div>
-            <div>
-              <div className="text-2xl font-black">100% Sync</div>
-              <div className="text-xs opacity-80">Supabase & Power BI Live</div>
+            <div className="flex items-center gap-2.5 text-sm font-bold">
+              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+              <span>Full Route Guard (Zero unauthorized URL bypass)</span>
+            </div>
+            <div className="flex items-center gap-2.5 text-sm font-bold">
+              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+              <span>Live Multi-Device Supabase Cloud Sync</span>
             </div>
           </div>
         </div>
 
         <div className="z-10 flex items-center justify-between text-xs opacity-80 border-t border-white/10 pt-4">
-          <span>Spice Route Kitchen • Bengaluru, KA</span>
-          <span>Active Shift: {shift}</span>
+          <span>Tan&apos;s Kitchen • Bengaluru, KA</span>
+          <span>Protected POS Terminal</span>
         </div>
       </div>
 
-      {/* Right Sign-in Form Panel */}
+      {/* Right Sign-in & Register Panel */}
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md space-y-6">
-          <div className="lg:hidden mb-6"><Logo /></div>
+          <div className="lg:hidden mb-4"><Logo /></div>
 
-          <div>
-            <h1 className="text-2xl font-black tracking-tight">Staff Sign In 🔒</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Select your role, enter staff name & credentials to start shift
-            </p>
-          </div>
-
-          {/* Role Selection */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: "Cashier", label: "Cashier", icon: User },
-              { id: "Manager", label: "Manager", icon: ShieldCheck },
-              { id: "Kitchen Admin", label: "Kitchen", icon: UtensilsCrossed },
-            ].map((r) => {
-              const Icon = r.icon;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRole(r.id as any)}
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-xl border p-3 text-xs font-bold transition-all",
-                    role === r.id
-                      ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
-                      : "bg-card text-muted-foreground hover:border-primary"
-                  )}
-                >
-                  <Icon className="size-4" />
-                  <span>{r.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Login Mode Switch */}
+          {/* Mode Switcher */}
           <div className="flex rounded-xl bg-muted p-1 text-xs font-bold">
             <button
               type="button"
-              onClick={() => setLoginMode("passcode")}
-              className={cn("flex-1 py-2 rounded-lg transition-colors", loginMode === "passcode" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
+              onClick={() => setMode("login")}
+              className={cn(
+                "flex-1 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5", 
+                mode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              Quick PIN Code
+              <KeyRound className="size-3.5" /> Sign In (Manager / Cashier)
             </button>
             <button
               type="button"
-              onClick={() => setLoginMode("email")}
-              className={cn("flex-1 py-2 rounded-lg transition-colors", loginMode === "email" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
+              onClick={() => setMode("register")}
+              className={cn(
+                "flex-1 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5", 
+                mode === "register" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              Email & Password
+              <UserPlus className="size-3.5" /> Manager Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="card-surface p-6 space-y-4">
-            {/* Staff Name Input */}
-            <div>
-              <Label htmlFor="staffName" className="text-xs font-extrabold text-muted-foreground uppercase">
-                Staff / User Name
-              </Label>
-              <Input
-                id="staffName"
-                type="text"
-                value={staffName}
-                onChange={(e) => setStaffName(e.target.value)}
-                placeholder="Enter your name (e.g., Mansoor Ahmed)"
-                className="mt-1 h-11 rounded-xl text-sm font-bold"
-              />
-            </div>
+          {/* MODE 1: LOGIN FORM */}
+          {mode === "login" && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+                  Staff Sign In <Lock className="size-5 text-primary" />
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter your assigned ID/Username and Password to access the terminal
+                </p>
+              </div>
 
-            {loginMode === "passcode" ? (
-              <div className="space-y-2">
-                <Label htmlFor="passcode" className="text-xs font-extrabold text-muted-foreground uppercase">
-                  Staff 4-Digit Quick PIN (Default: 1234)
-                </Label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="passcode"
-                    type="password"
-                    maxLength={4}
-                    value={passcode}
-                    onChange={(e) => setPasscode(e.target.value)}
-                    placeholder="• • • •"
-                    className="h-12 pl-10 text-center font-mono text-xl tracking-[0.5em] font-black rounded-xl"
-                  />
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Login ID / Username
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="e.g. manager or cashier1"
+                      className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="h-11 w-full rounded-xl border bg-card pl-10 pr-10 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="email" className="text-xs font-extrabold text-muted-foreground uppercase">Staff Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 h-11 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="password" className="text-xs font-extrabold text-muted-foreground uppercase">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1 h-11 rounded-xl"
-                  />
-                </div>
-              </div>
-            )}
 
-            {/* Shift Selector */}
-            <div className="space-y-1 pt-1 border-t">
-              <Label className="text-xs font-extrabold text-muted-foreground uppercase">Work Shift</Label>
-              <select
-                value={shift}
-                onChange={(e) => setShift(e.target.value)}
-                className="h-10 w-full rounded-xl border bg-card px-3 text-xs font-bold shadow-sm"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-xl bg-primary text-sm font-black text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
               >
-                <option value="Morning Shift">Morning Shift (09:00 AM - 04:00 PM)</option>
-                <option value="Evening Shift">Evening Shift (04:00 PM - 11:30 PM)</option>
-                <option value="Night Shift">Night Shift (11:30 PM - 04:00 AM)</option>
-              </select>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+                <span>{loading ? "Verifying Credentials..." : "Sign In to POS"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* MODE 2: MANAGER REGISTRATION FORM */}
+          {mode === "register" && (
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <div>
+                <h1 className="text-2xl font-black tracking-tight flex items-center gap-2 text-foreground">
+                  Manager Sign Up <ShieldCheck className="size-6 text-primary" />
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create a Master Manager account. The manager can generate Cashier accounts from the dashboard.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Manager Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="e.g. Mansoor Ahmed"
+                    className="h-11 w-full rounded-xl border bg-card px-3 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                    Manager Username / Login ID
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regUsername}
+                    onChange={(e) => setRegUsername(e.target.value)}
+                    placeholder="e.g. admin or mansoor"
+                    className="h-11 w-full rounded-xl border bg-card px-3 text-sm font-mono font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                      Set Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="h-11 w-full rounded-xl border bg-card px-3 text-sm font-mono font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      placeholder="Confirm password"
+                      className="h-11 w-full rounded-xl border bg-card px-3 text-sm font-mono font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-xl bg-primary text-sm font-black text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+                <span>{loading ? "Creating Master Account..." : "Create Manager Account & Log In"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* Quick Default Accounts Tip */}
+          <div className="rounded-xl border bg-muted/40 p-3.5 space-y-1.5 text-xs text-muted-foreground">
+            <div className="font-extrabold text-foreground flex items-center gap-1.5">
+              <KeyRound className="size-3.5 text-primary" /> Default Ready-to-Use Logins:
             </div>
-
-            <button
-              disabled={loading}
-              type="submit"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 disabled:opacity-70 transition-all mt-4"
-            >
-              {loading ? <Loader2 className="size-5 animate-spin" /> : <Lock className="size-4" />}
-              <span>Sign In as {staffName || "Staff"} ({role})</span>
-            </button>
-
-            <p className="text-center text-xs text-muted-foreground pt-1">
-              Demo Mode Active — Any PIN (e.g. 1234) or credentials will sign in.
-            </p>
-          </form>
+            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mt-1">
+              <div className="bg-background rounded-lg p-2 border">
+                <div className="font-bold text-primary">👔 Manager</div>
+                <div>ID: <span className="font-bold text-foreground">manager</span></div>
+                <div>Pass: <span className="font-bold text-foreground">admin</span></div>
+              </div>
+              <div className="bg-background rounded-lg p-2 border">
+                <div className="font-bold text-emerald-600">🧑‍💼 Cashier</div>
+                <div>ID: <span className="font-bold text-foreground">cashier</span></div>
+                <div>Pass: <span className="font-bold text-foreground">123</span></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

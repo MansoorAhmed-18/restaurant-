@@ -38,13 +38,14 @@ const DAYS_OF_WEEK = [
 export function Dashboard() {
   const { orders } = usePos();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [staff, setStaff] = useState<StaffUser>(getActiveStaff());
+  const [staff, setStaff] = useState<StaffUser>(() => getActiveStaff() || { name: "Staff", role: "Manager", username: "manager" });
   const [fabricUrl, setFabricUrl] = useState<string>(DEFAULT_FABRIC_URL);
   const [isEditingUrl, setIsEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState("");
 
   useEffect(() => {
-    setStaff(getActiveStaff());
+    const s = getActiveStaff();
+    if (s) setStaff(s);
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("fabric_dashboard_url");
       if (stored) setFabricUrl(stored);
