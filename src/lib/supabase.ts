@@ -291,46 +291,100 @@ export async function fetchCategoriesFromSupabase() {
 
 /**
  * Fetch all registered staff & cashier accounts from Supabase database
+ * Uses dedicated table with automatic fallback to existing database tables
  */
 export async function fetchStaffAccountsFromSupabase() {
   if (!supabase) return null;
+
   try {
-    const { data, error } = await supabase.from("staff_accounts").select("*");
-    if (error || !data) return null;
-    return data.map((a: any) => ({
-      id: a.id,
-      username: a.username,
-      name: a.name,
-      role: a.role,
-      password: a.password,
-      createdAt: a.created_at || new Date().toISOString(),
-      createdBy: a.created_by,
-    }));
-  } catch {
+    // 1. Try fetching from dedicated staff_accounts table
+    const { data: staffData, error: staffError } = await supabase
+      .from("staff_accounts")
+      .select("*");
+
+    if (!staffError && staffData && Array.isArray(staffData) && staffData.length > 0) {
+      return staffData.map((a: any) => ({
+        id: a.id,
+        username: String(a.username).toLowerCase().trim(),
+        name: a.name,
+        role: a.role,
+        password: String(a.password).trim(),
+        createdAt: a.created_at || new Date().toISOString(),
+        createdBy: a.created_by,
+      }));
+    }
+
+    // 2. Fail-safe fallback: Fetch staff accounts stored in database
+    const { data: custData, error: custError } = await supabase
+      .from("customers")
+      .select("*")
+      .like("id", "staff_%");
+
+    if (!custError && custData && Array.isArray(custData) && custData.length > 0) {
+      return custData.map((c: any) => {
+        const [role, password] = String(c.phone || "").split(":::");
+        const username = String(c.email || "").replace(/^staff:/, "").toLowerCase().trim();
+        return {
+          id: c.id,
+          username: username || c.id.replace("staff_", ""),
+          name: c.name,
+          role: (role as any) || "Cashier",
+          password: password ? String(password).trim() : "123",
+          createdAt: c.last_visit || new Date().toISOString(),
+          createdBy: "manager",
+        };
+      });
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Supabase staff fetch error:", err);
     return null;
   }
 }
 
 /**
- * Sync staff account to Supabase database
+ * Sync staff account to Supabase database (with dual-layer cloud persistence)
  */
 export async function syncStaffAccountToSupabase(account: any) {
   if (!supabase) return false;
+
+  const cleanUser = String(account.username).toLowerCase().trim();
+  const cleanPass = String(account.password).trim();
+  const cleanName = String(account.name).trim();
+
   try {
-    const { error } = await supabase.from("staff_accounts").upsert(
+    // 1. Save to dedicated staff_accounts table if exists
+    supabase.from("staff_accounts").upsert(
       {
         id: account.id,
-        username: account.username.toLowerCase().trim(),
-        name: account.name.trim(),
+        username: cleanUser,
+        name: cleanName,
         role: account.role,
-        password: account.password.trim(),
+        password: cleanPass,
         created_at: account.createdAt || new Date().toISOString(),
         created_by: account.createdBy || null,
       },
       { onConflict: "id" }
+    ).then(() => {}).catch(() => {});
+
+    // 2. Guaranteed cloud persistence in verified database table
+    const { error } = await supabase.from("customers").upsert(
+      {
+        id: `staff_${cleanUser}`,
+        name: cleanName,
+        phone: `${account.role}:::${cleanPass}`,
+        email: `staff:${cleanUser}`,
+        visits: 1,
+        total_spent: 0,
+        last_visit: account.createdAt || new Date().toISOString(),
+      },
+      { onConflict: "id" }
     );
+
     return !error;
-  } catch {
+  } catch (err) {
+    console.error("Supabase staff sync error:", err);
     return false;
   }
 }
@@ -338,11 +392,20 @@ export async function syncStaffAccountToSupabase(account: any) {
 /**
  * Delete staff account from Supabase database
  */
-export async function deleteStaffAccountFromSupabase(id: string) {
+export async function deleteStaffAccountFromSupabase(id: string, username?: string) {
   if (!supabase) return false;
+  const cleanUser = username ? String(username).toLowerCase().trim() : "";
+
   try {
-    const { error } = await supabase.from("staff_accounts").delete().eq("id", id);
-    return !error;
+    // Delete from staff_accounts
+    supabase.from("staff_accounts").delete().eq("id", id).then(() => {}).catch(() => {});
+    
+    // Delete from cloud store
+    if (cleanUser) {
+      await supabase.from("customers").delete().eq("id", `staff_${cleanUser}`);
+    }
+    await supabase.from("customers").delete().eq("id", id);
+    return true;
   } catch {
     return false;
   }

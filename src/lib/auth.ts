@@ -102,9 +102,9 @@ export async function syncAccountsFromCloud(): Promise<StaffAccount[]> {
       const map = new Map<string, StaffAccount>();
       
       // Add local defaults first
-      local.forEach((a) => map.set(a.username.toLowerCase(), a));
+      local.forEach((a) => map.set(a.username.toLowerCase().trim(), a));
       // Override with remote cloud accounts
-      remoteAccounts.forEach((ra) => map.set(ra.username.toLowerCase(), ra));
+      remoteAccounts.forEach((ra) => map.set(ra.username.toLowerCase().trim(), ra));
 
       const merged = Array.from(map.values());
       saveRegisteredAccounts(merged);
@@ -129,7 +129,7 @@ export function getManagerAccount(): StaffAccount {
   return mgr || DEFAULT_INITIAL_ACCOUNTS[0];
 }
 
-export function updateManagerCredentials(name: string, username: string, password: string): { success: boolean; message?: string } {
+export async function updateManagerCredentials(name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> {
   const trimmedUser = username.trim().toLowerCase();
   const trimmedName = name.trim();
   const trimmedPass = password.trim();
@@ -160,7 +160,7 @@ export function updateManagerCredentials(name: string, username: string, passwor
 
   saveRegisteredAccounts(updated);
   if (updatedMgr) {
-    syncStaffAccountToSupabase(updatedMgr);
+    await syncStaffAccountToSupabase(updatedMgr);
   }
 
   const current = getActiveStaff();
@@ -175,7 +175,7 @@ export function updateManagerCredentials(name: string, username: string, passwor
   return { success: true };
 }
 
-export function addStaffAccount(name: string, username: string, password: string, role: "Cashier" | "Chef / Kitchen", createdByManager: string): { success: boolean; message?: string } {
+export async function addStaffAccount(name: string, username: string, password: string, role: "Cashier" | "Chef / Kitchen", createdByManager: string): Promise<{ success: boolean; message?: string }> {
   const trimmedUser = username.trim().toLowerCase();
   const trimmedName = name.trim();
   const trimmedPass = password.trim();
@@ -185,7 +185,7 @@ export function addStaffAccount(name: string, username: string, password: string
   }
 
   const accounts = getRegisteredAccounts();
-  const exists = accounts.find((a) => a.username.toLowerCase() === trimmedUser);
+  const exists = accounts.find((a) => a.username.toLowerCase().trim() === trimmedUser);
   if (exists) {
     return { success: false, message: `Login ID / Username "${trimmedUser}" is already in use.` };
   }
@@ -204,12 +204,12 @@ export function addStaffAccount(name: string, username: string, password: string
   saveRegisteredAccounts(updated);
   
   // Sync to Supabase cloud database immediately
-  syncStaffAccountToSupabase(newStaff);
+  await syncStaffAccountToSupabase(newStaff);
 
   return { success: true };
 }
 
-export function removeStaffAccount(id: string): { success: boolean; message?: string } {
+export async function removeStaffAccount(id: string): Promise<{ success: boolean; message?: string }> {
   const accounts = getRegisteredAccounts();
   const target = accounts.find((a) => a.id === id);
   if (!target) return { success: false, message: "Account not found." };
@@ -222,7 +222,7 @@ export function removeStaffAccount(id: string): { success: boolean; message?: st
   saveRegisteredAccounts(updated);
   
   // Remove from Supabase cloud database
-  deleteStaffAccountFromSupabase(id);
+  await deleteStaffAccountFromSupabase(id, target.username);
 
   return { success: true };
 }

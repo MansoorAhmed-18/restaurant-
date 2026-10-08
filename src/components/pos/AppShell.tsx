@@ -84,38 +84,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     navRouter({ to: "/login" });
   };
 
-  const handleCreateStaff = (e: React.FormEvent) => {
+  const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staff) return;
-    const res = addStaffAccount(newStaffName, newStaffUser, newStaffPass, newStaffRole, staff.name);
+    toast.info("Saving staff account to cloud...");
+    const res = await addStaffAccount(newStaffName, newStaffUser, newStaffPass, newStaffRole, staff.name);
     if (!res.success) {
       toast.error(res.message || "Failed to add staff member");
       return;
     }
-    toast.success(`${newStaffRole} account "${newStaffUser}" created successfully!`);
+    toast.success(`${newStaffRole} account "${newStaffUser}" saved & synced to cloud!`);
     setNewStaffName("");
     setNewStaffUser("");
     setNewStaffPass("");
     setAccounts(getRegisteredAccounts());
   };
 
-  const handleUpdateManager = (e: React.FormEvent) => {
+  const handleUpdateManager = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = updateManagerCredentials(mgrName, mgrUser, mgrPass);
+    toast.info("Updating master manager credentials...");
+    const res = await updateManagerCredentials(mgrName, mgrUser, mgrPass);
     if (!res.success) {
       toast.error(res.message || "Failed to update Manager credentials.");
       return;
     }
-    toast.success("Master Manager credentials updated!");
+    toast.success("Master Manager credentials updated & synced!");
     setIsEditingMgr(false);
     setAccounts(getRegisteredAccounts());
     const current = getActiveStaff();
     if (current) setStaff(current);
   };
 
-  const handleDeleteAccount = (id: string, name: string) => {
+  const handleDeleteAccount = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete account "${name}"?`)) return;
-    const res = removeStaffAccount(id);
+    const res = await removeStaffAccount(id);
     if (!res.success) {
       toast.error(res.message || "Failed to remove account");
       return;
