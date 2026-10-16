@@ -16,13 +16,18 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 }
 
 export function StatCard({ label, value, hint, icon, tone = "primary" }: { label: string; value: string; hint?: string; icon: ReactNode; tone?: "primary" | "success" | "warning" | "info" }) {
-  const tones = { primary: "bg-primary-soft text-primary", success: "bg-success-soft text-success", warning: "bg-warning-soft text-warning", info: "bg-info-soft text-info" };
+  const tones = { 
+    primary: "bg-primary-soft text-primary ring-1 ring-primary/20", 
+    success: "bg-success-soft text-success ring-1 ring-success/20", 
+    warning: "bg-yellow-400/20 text-yellow-700 ring-1 ring-yellow-400/30", 
+    info: "bg-info-soft text-info ring-1 ring-info/20" 
+  };
   return (
-    <div className="card-surface flex items-start gap-4 p-5">
-      <div className={cn("grid size-12 shrink-0 place-items-center rounded-2xl", tones[tone])}>{icon}</div>
+    <div className="card-surface flex items-start gap-4 p-5 transition-all hover:shadow-md">
+      <div className={cn("grid size-12 shrink-0 place-items-center rounded-2xl shadow-sm", tones[tone])}>{icon}</div>
       <div className="min-w-0">
         <div className="text-sm font-medium text-muted-foreground">{label}</div>
-        <div className="mt-0.5 text-2xl font-extrabold">{value}</div>
+        <div className="mt-0.5 text-2xl font-black text-foreground">{value}</div>
         {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
       </div>
     </div>
@@ -30,13 +35,19 @@ export function StatCard({ label, value, hint, icon, tone = "primary" }: { label
 }
 
 const badgeTones: Record<string, string> = {
-  available: "bg-success-soft text-success", paid: "bg-success-soft text-success", completed: "bg-success-soft text-success",
-  occupied: "bg-primary-soft text-accent-foreground", preparing: "bg-info-soft text-info",
-  reserved: "bg-warning-soft text-warning", pending: "bg-warning-soft text-warning", unpaid: "bg-warning-soft text-warning",
-  cancelled: "bg-danger-soft text-destructive", refunded: "bg-danger-soft text-destructive",
+  available: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30",
+  paid: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30",
+  completed: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30",
+  occupied: "bg-primary/15 text-primary border border-primary/30 font-extrabold",
+  preparing: "bg-yellow-400/25 text-yellow-800 border border-yellow-400/40 font-extrabold",
+  reserved: "bg-yellow-400/25 text-yellow-800 border border-yellow-400/40 font-extrabold",
+  pending: "bg-yellow-400/20 text-yellow-700 border border-yellow-400/30 font-extrabold",
+  unpaid: "bg-yellow-400/20 text-yellow-700 border border-yellow-400/30 font-extrabold",
+  cancelled: "bg-danger-soft text-destructive border border-destructive/20",
+  refunded: "bg-danger-soft text-destructive border border-destructive/20",
 };
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize", badgeTones[status] ?? "bg-muted text-muted-foreground")}>{status}</span>;
+  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize shadow-xs", badgeTones[status] ?? "bg-muted text-muted-foreground")}>{status}</span>;
 }
 
 export function VegMark({ veg }: { veg: boolean }) {

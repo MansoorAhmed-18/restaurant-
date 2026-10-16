@@ -24,10 +24,18 @@ const nav = [
 export function Logo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="grid size-10 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground shadow-[var(--shadow-lift)]">T</div>
+      <div className="relative grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary via-primary/95 to-purple-800 text-lg font-black text-yellow-300 shadow-[var(--shadow-lift)] ring-2 ring-yellow-400/30">
+        <span>T</span>
+        <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-yellow-400 ring-2 ring-card animate-pulse" />
+      </div>
       <div className="leading-tight">
-        <div className="font-extrabold text-foreground">Tan&apos;s Kitchen</div>
-        <div className="text-xs text-muted-foreground">Spice Route Kitchen</div>
+        <div className="font-extrabold text-foreground flex items-center gap-1.5">
+          <span>Tan&apos;s Kitchen</span>
+        </div>
+        <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-yellow-500 inline-block"></span>
+          <span>Spice Route POS</span>
+        </div>
       </div>
     </div>
   );
@@ -140,17 +148,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isManager = staff.role === "Manager";
 
   const side = (
-    <aside className="flex h-full w-64 flex-col border-r bg-sidebar p-4">
+    <aside className="flex h-full w-64 flex-col border-r bg-sidebar p-4 shadow-sm">
       <div className="px-2 py-2"><Logo /></div>
-      <nav className="mt-6 flex flex-1 flex-col gap-1">
+      <nav className="mt-6 flex flex-1 flex-col gap-1.5">
         {nav.map(({ to, label, icon: Icon }) => (
           <Link 
             key={to} 
             to={to} 
             onClick={() => setOpen(false)} 
             activeOptions={{ exact: to === "/" }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            activeProps={{ className: "!bg-sidebar-accent !text-sidebar-accent-foreground" }}
+            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary"
+            activeProps={{ className: "!bg-primary !text-primary-foreground shadow-md font-bold" }}
           >
             <Icon className="size-5" />{label}
           </Link>
@@ -169,23 +177,24 @@ export function AppShell({ children }: { children: ReactNode }) {
               setMgrPass(mgr.password);
               setStaffModalOpen(true);
             }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary/90 transition-colors hover:bg-primary/10 hover:text-primary mt-2 border border-primary/20 bg-primary/5"
+            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-primary transition-all hover:bg-primary/15 mt-3 border border-primary/25 bg-primary/5 shadow-sm"
           >
-            <KeyRound className="size-5 text-primary" />
-            <span>Staff Logins</span>
+            <KeyRound className="size-5 text-yellow-500 shrink-0" />
+            <span className="font-bold">Staff Logins</span>
+            <span className="ml-auto text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-yellow-400/25 text-yellow-700 border border-yellow-400/30">Admin</span>
           </button>
         )}
       </nav>
 
       {/* Dynamic Logged-in Staff Profile */}
-      <div className="flex items-center gap-3 rounded-xl bg-muted p-3">
-        <div className="grid size-9 place-items-center rounded-full bg-primary text-sm font-black text-primary-foreground uppercase shadow-sm">
+      <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-3 border border-border/80">
+        <div className="relative grid size-9 place-items-center rounded-full bg-primary text-sm font-black text-yellow-300 uppercase shadow-sm ring-2 ring-yellow-400/30">
           {getStaffInitials(staff.name)}
         </div>
         <div className="min-w-0 flex-1 text-sm">
           <div className="font-bold truncate text-foreground flex items-center gap-1">
             <span>{staff.name}</span>
-            {isManager && <ShieldCheck className="size-3.5 text-primary shrink-0" />}
+            {isManager && <ShieldCheck className="size-3.5 text-yellow-500 shrink-0" />}
           </div>
           <div className="text-xs text-muted-foreground font-medium">{staff.role} ({staff.username})</div>
         </div>
@@ -439,7 +448,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <div key={acc.id} className="flex items-center justify-between p-3 text-xs gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`grid size-8 place-items-center rounded-lg font-bold shrink-0 ${
-                          isAccMgr ? "bg-primary text-primary-foreground" : isChef ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600"
+                          isAccMgr ? "bg-primary text-primary-foreground" : isChef ? "bg-yellow-400/20 text-yellow-700 border border-yellow-400/40" : "bg-emerald-500/15 text-emerald-600"
                         }`}>
                           {isAccMgr ? <ShieldCheck className="size-4" /> : isChef ? <ChefHat className="size-4" /> : <User className="size-4" />}
                         </div>
@@ -447,7 +456,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <div className="font-extrabold text-foreground truncate flex items-center gap-1.5">
                             <span>{acc.name}</span>
                             <span className={`text-[10px] rounded px-1.5 py-0.5 font-bold uppercase ${
-                              isAccMgr ? "bg-primary/10 text-primary" : isChef ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/15 text-emerald-600"
+                              isAccMgr ? "bg-primary/10 text-primary" : isChef ? "bg-yellow-400/20 text-yellow-700 border border-yellow-400/30" : "bg-emerald-500/15 text-emerald-600"
                             }`}>
                               {acc.role}
                             </span>

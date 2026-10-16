@@ -41,7 +41,7 @@ function Orders() {
       <PageHeader title="Orders" subtitle="Track every ticket from kitchen to bill with live dates & times" />
       <div className="mb-5 flex gap-2">
         {tabs.map((x) => (
-          <button key={x.id} onClick={() => setTab(x.id)} className={cn("rounded-full border px-4 py-2 text-sm font-bold transition-all", tab === x.id ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-card hover:bg-muted")}>
+          <button key={x.id} onClick={() => setTab(x.id)} className={cn("rounded-full border px-4 py-2 text-sm font-bold transition-all", tab === x.id ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-yellow-400/30" : "bg-card hover:border-primary")}>
             {x.label} · {orders.filter((o) => x.match(o.status)).length}
           </button>
         ))}

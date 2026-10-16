@@ -120,7 +120,7 @@ export function Pos() {
                   className={cn(
                     "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all", 
                     cat === c.id 
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm" 
+                      ? "border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-yellow-400/40" 
                       : "bg-card hover:border-primary text-foreground"
                   )}
                 >
@@ -223,23 +223,30 @@ export function Pos() {
               </ul>
 
               {/* Total Summary - GST removed */}
-              <div className="space-y-1.5 border-t border-dashed pt-3 text-xs">
-                <div className="flex justify-between border-t pt-2 text-sm font-black text-foreground"><span>Total Payable</span><span className="text-primary text-base">{inr(pos.totals.total)}</span></div>
+              <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-yellow-400/10 border border-primary/25 p-4 space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  <span>Total Payable</span>
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-purple-950 font-black text-[10px] shadow-sm">NET PAYABLE</span>
+                </div>
+                <div className="flex justify-between items-baseline pt-1">
+                  <span className="text-xs text-muted-foreground font-semibold">Total to Collect:</span>
+                  <span className="text-primary text-2xl font-black font-mono">{inr(pos.totals.total)}</span>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <button 
                   onClick={() => handlePlaceOrder(false)} 
-                  className="h-11 rounded-xl border-2 border-primary text-xs font-extrabold text-primary hover:bg-primary/5 transition-colors"
+                  className="h-11 rounded-xl border-2 border-primary text-xs font-extrabold text-primary hover:bg-primary/10 transition-colors"
                 >
-                  Send Kitchen Ticket
+                  Kitchen Ticket
                 </button>
                 <button 
                   onClick={() => handlePlaceOrder(true)} 
-                  className="h-11 rounded-xl bg-primary text-xs font-black text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity"
+                  className="h-11 rounded-xl bg-gradient-to-r from-primary to-purple-800 text-xs font-black text-white shadow-[var(--shadow-lift)] hover:opacity-95 transition-all flex items-center justify-center gap-1.5 ring-1 ring-yellow-400/40"
                 >
-                  Pay & Print Bill 🧾
+                  <span className="text-yellow-300">⚡</span> Pay & Print 🧾
                 </button>
               </div>
             </>

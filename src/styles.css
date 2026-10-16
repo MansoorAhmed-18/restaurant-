@@ -53,52 +53,69 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --shadow-card: 0 1px 2px oklch(0.3 0.03 270 / 0.04), 0 8px 24px -12px oklch(0.3 0.03 270 / 0.12);
-  --shadow-lift: 0 14px 30px -12px oklch(0.7 0.19 48 / 0.45);
+  --color-yellow: var(--yellow);
+  --color-yellow-foreground: var(--yellow-foreground);
+  --color-yellow-soft: var(--yellow-soft);
+  --shadow-card: 0 2px 10px -2px oklch(0.3 0.05 288 / 0.04), 0 14px 28px -10px oklch(0.3 0.05 288 / 0.08);
+  --shadow-lift: 0 14px 30px -10px oklch(0.53 0.28 288 / 0.42);
+  --shadow-yellow: 0 12px 28px -8px oklch(0.85 0.19 92 / 0.45);
 }
 
 :root {
   --radius: 0.875rem;
-  --background: oklch(0.975 0.004 270);
-  --foreground: oklch(0.34 0.03 272);
+  --background: oklch(0.978 0.01 285);
+  --foreground: oklch(0.22 0.04 285);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.34 0.03 272);
+  --card-foreground: oklch(0.22 0.04 285);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.34 0.03 272);
-  --primary: oklch(0.7 0.19 48);
+  --popover-foreground: oklch(0.22 0.04 285);
+  
+  /* Impressive Royal Violet */
+  --primary: oklch(0.53 0.28 288);
   --primary-foreground: oklch(1 0 0);
-  --primary-soft: oklch(0.96 0.035 60);
-  --secondary: oklch(0.955 0.006 270);
-  --secondary-foreground: oklch(0.34 0.03 272);
-  --muted: oklch(0.955 0.006 270);
-  --muted-foreground: oklch(0.56 0.02 270);
-  --accent: oklch(0.96 0.035 60);
-  --accent-foreground: oklch(0.55 0.17 45);
-  --destructive: oklch(0.6 0.21 25);
+  --primary-soft: oklch(0.955 0.045 288);
+  
+  --secondary: oklch(0.96 0.015 285);
+  --secondary-foreground: oklch(0.25 0.04 285);
+  --muted: oklch(0.955 0.012 285);
+  --muted-foreground: oklch(0.52 0.03 285);
+  
+  /* Radiant High-Contrast Yellow / Gold */
+  --accent: oklch(0.95 0.08 95);
+  --accent-foreground: oklch(0.35 0.15 75);
+  --yellow: oklch(0.86 0.19 92);
+  --yellow-foreground: oklch(0.25 0.1 75);
+  --yellow-soft: oklch(0.965 0.08 95);
+  
+  --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(1 0 0);
-  --success: oklch(0.58 0.14 150);
+  --success: oklch(0.58 0.16 150);
   --success-soft: oklch(0.95 0.05 150);
-  --warning: oklch(0.68 0.15 75);
-  --warning-soft: oklch(0.96 0.06 85);
-  --info: oklch(0.55 0.14 250);
-  --info-soft: oklch(0.95 0.03 250);
+  --warning: oklch(0.85 0.19 92);
+  --warning-soft: oklch(0.965 0.08 95);
+  --info: oklch(0.56 0.16 260);
+  --info-soft: oklch(0.95 0.04 260);
   --danger-soft: oklch(0.95 0.04 25);
-  --border: oklch(0.92 0.006 270);
-  --input: oklch(0.92 0.006 270);
-  --ring: oklch(0.7 0.19 48);
-  --chart-1: oklch(0.7 0.19 48);
-  --chart-2: oklch(0.58 0.14 150);
-  --chart-3: oklch(0.55 0.14 250);
-  --chart-4: oklch(0.68 0.15 75);
-  --chart-5: oklch(0.6 0.21 25);
+  --border: oklch(0.92 0.014 285);
+  --input: oklch(0.92 0.014 285);
+  --ring: oklch(0.53 0.28 288);
+  
+  /* Visual Data & Charts */
+  --chart-1: oklch(0.53 0.28 288);
+  --chart-2: oklch(0.86 0.19 92);
+  --chart-3: oklch(0.68 0.22 282);
+  --chart-4: oklch(0.76 0.17 95);
+  --chart-5: oklch(0.40 0.24 295);
+  
+  /* Sidebar */
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.34 0.03 272);
-  --sidebar-primary: oklch(0.7 0.19 48);
+  --sidebar-foreground: oklch(0.25 0.04 285);
+  --sidebar-primary: oklch(0.53 0.28 288);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0.035 60);
-  --sidebar-accent-foreground: oklch(0.55 0.17 45);
-  --sidebar-border: oklch(0.92 0.006 270);
-  --sidebar-ring: oklch(0.7 0.19 48);
+  --sidebar-accent: oklch(0.95 0.045 288);
+  --sidebar-accent-foreground: oklch(0.45 0.28 288);
+  --sidebar-border: oklch(0.92 0.014 285);
+  --sidebar-ring: oklch(0.53 0.28 288);
 }
 
 @layer base {
@@ -114,6 +131,24 @@
   background: var(--color-card);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+}
+
+@utility gradient-hero {
+  background: linear-gradient(135deg, oklch(0.35 0.2 290) 0%, oklch(0.48 0.28 288) 55%, oklch(0.6 0.26 280) 100%);
+}
+
+@utility badge-yellow-glow {
+  background-color: oklch(0.965 0.08 95);
+  color: oklch(0.3 0.14 75);
+  border: 1px solid oklch(0.86 0.19 92 / 0.5);
+  box-shadow: 0 2px 10px -2px oklch(0.86 0.19 92 / 0.3);
+}
+
+@utility badge-violet-glow {
+  background-color: oklch(0.95 0.045 288);
+  color: oklch(0.45 0.28 288);
+  border: 1px solid oklch(0.53 0.28 288 / 0.3);
 }
 
 @media print {

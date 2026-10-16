@@ -61,48 +61,54 @@ export function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2 bg-background">
       {/* Left Branding Panel */}
-      <div className="hidden flex-col justify-between bg-gradient-to-br from-primary via-primary/95 to-orange-600 p-12 text-primary-foreground lg:flex relative overflow-hidden">
-        <div className="absolute -right-20 -bottom-20 size-96 rounded-full bg-white/10 blur-3xl pointer-events-none"></div>
+      <div className="hidden flex-col justify-between bg-gradient-to-br from-violet-950 via-purple-900 to-indigo-950 p-12 text-white lg:flex relative overflow-hidden">
+        {/* Ambient Glowing Orbs */}
+        <div className="absolute -right-20 -bottom-20 size-96 rounded-full bg-yellow-400/15 blur-3xl pointer-events-none"></div>
+        <div className="absolute top-1/4 -left-20 size-80 rounded-full bg-violet-600/30 blur-3xl pointer-events-none"></div>
         
         <div className="flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-2xl bg-white text-primary text-xl font-black shadow-lg">T</div>
+            <div className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-yellow-300 to-yellow-500 text-purple-950 text-xl font-black shadow-xl ring-2 ring-yellow-300/40">
+              T
+            </div>
             <div className="leading-tight">
-              <div className="text-xl font-black">Tan&apos;s Kitchen</div>
-              <div className="text-xs opacity-80">Spice Route Kitchen Systems</div>
+              <div className="text-xl font-black text-white">Tan&apos;s Kitchen</div>
+              <div className="text-xs text-yellow-200/80 font-medium">Spice Route Kitchen Systems</div>
             </div>
           </div>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur-md">Secure Terminal v3.0</span>
+          <span className="rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 px-3.5 py-1 text-xs font-black backdrop-blur-md shadow-sm">
+            ⚡ Secure Terminal v3.0
+          </span>
         </div>
 
         <div className="z-10 my-auto py-12">
           <div className="text-7xl mb-6">🔒 🍛 👨‍🍳</div>
-          <h2 className="text-4xl font-black leading-tight tracking-tight">
+          <h2 className="text-4xl font-black leading-tight tracking-tight text-white">
             Role-Based Authentication & Terminal Protection.
           </h2>
-          <p className="mt-4 max-w-md text-base opacity-90 leading-relaxed font-medium">
+          <p className="mt-4 max-w-md text-base text-violet-200/90 leading-relaxed font-medium">
             Strict access control for Restaurant Managers, Cashiers, and Kitchen Staff. Direct URL access is blocked without valid credentials.
           </p>
 
-          <div className="mt-8 space-y-3 border-t border-white/20 pt-6">
-            <div className="flex items-center gap-2.5 text-sm font-bold">
-              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+          <div className="mt-8 space-y-3.5 border-t border-violet-700/50 pt-6">
+            <div className="flex items-center gap-2.5 text-sm font-bold text-violet-100">
+              <CheckCircle2 className="size-5 text-yellow-400 shrink-0" />
               <span>1 Master Manager Account with Full Access</span>
             </div>
-            <div className="flex items-center gap-2.5 text-sm font-bold">
-              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+            <div className="flex items-center gap-2.5 text-sm font-bold text-violet-100">
+              <CheckCircle2 className="size-5 text-yellow-400 shrink-0" />
               <span>Manager-Created Cashier & Kitchen Logins</span>
             </div>
-            <div className="flex items-center gap-2.5 text-sm font-bold">
-              <CheckCircle2 className="size-5 text-amber-300 shrink-0" />
+            <div className="flex items-center gap-2.5 text-sm font-bold text-violet-100">
+              <CheckCircle2 className="size-5 text-yellow-400 shrink-0" />
               <span>Direct URL Protection (Login required)</span>
             </div>
           </div>
         </div>
 
-        <div className="z-10 flex items-center justify-between text-xs opacity-80 border-t border-white/10 pt-4">
+        <div className="z-10 flex items-center justify-between text-xs text-violet-300/80 border-t border-violet-800/60 pt-4">
           <span>Tan&apos;s Kitchen • Bengaluru, KA</span>
-          <span>Protected POS & Kitchen Terminal</span>
+          <span className="text-yellow-400/90 font-semibold">Protected POS & Kitchen Terminal</span>
         </div>
       </div>
 
@@ -192,8 +198,8 @@ export function Login() {
                 <div>ID: <span className="font-bold text-foreground">cashier</span></div>
                 <div>Pass: <span className="font-bold text-foreground">123</span></div>
               </div>
-              <div className="bg-background rounded-lg p-2 border">
-                <div className="font-bold text-amber-600">👨‍🍳 Kitchen</div>
+              <div className="bg-background rounded-lg p-2 border border-yellow-400/40 bg-yellow-400/5">
+                <div className="font-bold text-yellow-600">👨‍🍳 Kitchen</div>
                 <div>ID: <span className="font-bold text-foreground">chef</span></div>
                 <div>Pass: <span className="font-bold text-foreground">123</span></div>
               </div>

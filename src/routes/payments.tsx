@@ -70,25 +70,26 @@ function Payments() {
         <div className="card-surface h-fit p-6">
           {!sel ? <EmptyState title="Nothing to collect" text="All bills are settled. Select an unpaid order to collect payment." /> : (
             <>
-              <div className="text-sm text-muted-foreground">Collecting for order #{sel.number}</div>
-              <div className="text-4xl font-extrabold">{inr(sel.total)}</div>
+              <div className="text-sm font-bold text-muted-foreground">Collecting for order #{sel.number}</div>
+              <div className="text-4xl font-black text-primary font-mono mt-1">{inr(sel.total)}</div>
               <div className="mt-5 grid grid-cols-2 gap-2">
                 {methods.map(({ id, label, icon: Icon }) => (
-                  <button key={id} onClick={() => setMethod(id)} className={cn("flex flex-col items-center gap-1 rounded-xl border-2 p-3 text-xs font-bold", method === id ? "border-primary bg-primary-soft text-accent-foreground" : "")}>
+                  <button key={id} onClick={() => setMethod(id)} className={cn("flex flex-col items-center gap-1 rounded-xl border-2 p-3 text-xs font-bold transition-all", method === id ? "border-primary bg-primary/10 text-primary ring-2 ring-yellow-400/40 shadow-sm" : "border-border hover:border-primary/50")}>
                     <Icon className="size-5" />{label}
                   </button>
                 ))}
               </div>
               {method === "upi" && (
-                <div className="mt-5 flex flex-col items-center rounded-2xl bg-primary-soft p-5">
+                <div className="mt-5 flex flex-col items-center rounded-2xl bg-gradient-to-b from-primary/10 via-purple-500/5 to-yellow-400/10 border border-primary/20 p-5 shadow-sm">
                   <FakeQr seed={sel.number} />
-                  <div className="mt-3 text-sm font-bold">Scan with any UPI app</div>
-                  <div className="text-xs text-muted-foreground">spiceroute@upi · GPay · PhonePe · Paytm</div>
+                  <span className="mt-3 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-yellow-400 text-purple-950 shadow-xs">Scan & Pay Instant UPI</span>
+                  <div className="mt-2 text-sm font-black text-foreground">Scan with any UPI app</div>
+                  <div className="text-xs text-muted-foreground font-mono">spiceroute@upi · GPay · PhonePe · Paytm</div>
                 </div>
               )}
-              {method === "cash" && <div className="mt-5 rounded-2xl bg-muted p-5 text-center text-sm text-muted-foreground">Collect {inr(sel.total)} in cash and confirm.</div>}
-              <button disabled={busy} onClick={confirm} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-success font-bold text-primary-foreground disabled:opacity-70">
-                {busy && <Loader2 className="size-4 animate-spin" />}{busy ? "Confirming…" : "Mark as paid"}
+              {method === "cash" && <div className="mt-5 rounded-2xl bg-muted p-5 text-center text-sm font-medium text-foreground">Collect <span className="font-bold text-primary font-mono">{inr(sel.total)}</span> in cash and confirm.</div>}
+              <button disabled={busy} onClick={confirm} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 disabled:opacity-70 transition-all">
+                {busy && <Loader2 className="size-4 animate-spin text-yellow-300" />}{busy ? "Confirming…" : "Mark as paid & Print Receipt"}
               </button>
             </>
           )}

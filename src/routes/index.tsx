@@ -207,9 +207,9 @@ export function Dashboard() {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`Open Microsoft Fabric Dashboard (${fabricUrl})`}
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all transform active:scale-95"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-800 to-indigo-900 border border-purple-600/40 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-md hover:from-purple-900 hover:to-indigo-950 transition-all transform active:scale-95"
               >
-                <Sparkles className="size-4 text-amber-300 shrink-0" />
+                <Sparkles className="size-4 text-yellow-300 shrink-0" />
                 <span>Fabric Dashboard</span>
                 <ExternalLink className="size-3.5 opacity-80 shrink-0" />
               </a>
@@ -227,7 +227,7 @@ export function Dashboard() {
                 to="/pos" 
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)] hover:opacity-90 transition-opacity"
               >
-                <Plus className="size-4 shrink-0" />
+                <Plus className="size-4 text-yellow-300 shrink-0" />
                 <span>+ New Order</span>
               </Link>
             </div>
@@ -357,20 +357,20 @@ export function Dashboard() {
             {/* Visual ratio bar */}
             <div className="mt-4 space-y-1">
               <div className="flex justify-between text-[11px] font-bold">
-                <span className="text-primary">
+                <span className="text-primary font-black">
                   Today ({todaySales + yesterdaySales > 0 ? Math.round((todaySales / (todaySales + yesterdaySales)) * 100) : 0}%)
                 </span>
-                <span className="text-blue-500">
+                <span className="text-yellow-600 font-black">
                   Yesterday ({todaySales + yesterdaySales > 0 ? Math.round((yesterdaySales / (todaySales + yesterdaySales)) * 100) : 0}%)
                 </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
+              <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden flex ring-1 ring-border">
                 <div 
                   className="h-full bg-primary transition-all duration-500"
                   style={{ width: `${todaySales + yesterdaySales > 0 ? (todaySales / (todaySales + yesterdaySales)) * 100 : 50}%` }}
                 ></div>
                 <div 
-                  className="h-full bg-blue-500 transition-all duration-500"
+                  className="h-full bg-yellow-400 transition-all duration-500"
                   style={{ width: `${todaySales + yesterdaySales > 0 ? (yesterdaySales / (todaySales + yesterdaySales)) * 100 : 50}%` }}
                 ></div>
               </div>
@@ -386,12 +386,12 @@ export function Dashboard() {
                 <BarChart2 className="size-5 text-primary shrink-0" /> Weekly Everyday Sales Comparison (Column Chart)
               </h2>
               <p className="text-xs text-muted-foreground">
-                Day-by-day revenue comparison across Monday to Sunday (Orange bar indicates peak rush day)
+                Day-by-day revenue comparison across Monday to Sunday (Golden Yellow bar indicates peak rush day)
               </p>
             </div>
             {peakDay && peakDay.sales > 0 && (
-              <span className="self-start sm:self-auto inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-extrabold text-amber-600">
-                <Sparkles className="size-3.5 shrink-0" /> Peak: {peakDay.dayFull} ({inr(peakDay.sales)})
+              <span className="self-start sm:self-auto inline-flex items-center gap-1.5 rounded-full bg-yellow-400/25 px-3 py-1 text-xs font-black text-yellow-700 border border-yellow-400/40 shadow-sm">
+                <Sparkles className="size-3.5 text-yellow-600 shrink-0" /> Peak: {peakDay.dayFull} ({inr(peakDay.sales)})
               </span>
             )}
           </div>
@@ -433,7 +433,7 @@ export function Dashboard() {
                   {weeklyData.map((entry, index) => (
                     <Cell 
                       key={`weekly-cell-${index}`} 
-                      fill={entry.sales === peakDay.sales && entry.sales > 0 ? "#f97316" : entry.isToday ? "var(--primary)" : "#3b82f6"} 
+                      fill={entry.sales === peakDay.sales && entry.sales > 0 ? "#facc15" : entry.isToday ? "var(--primary)" : "#a78bfa"} 
                     />
                   ))}
                 </Bar>
@@ -449,12 +449,15 @@ export function Dashboard() {
                 className={`rounded-xl border p-2.5 text-center transition-all ${
                   d.isToday 
                     ? "bg-primary/10 border-primary shadow-sm" 
+                    : d.sales === peakDay.sales && d.sales > 0
+                    ? "bg-yellow-400/10 border-yellow-400/50"
                     : "bg-muted/20 hover:bg-muted/40"
                 }`}
               >
                 <div className="text-[11px] font-extrabold uppercase text-muted-foreground flex items-center justify-center gap-1">
                   <span>{d.day}</span>
                   {d.isToday && <span className="size-1.5 rounded-full bg-primary" title="Today"></span>}
+                  {d.sales === peakDay.sales && d.sales > 0 && <span className="size-1.5 rounded-full bg-yellow-400" title="Peak Day"></span>}
                 </div>
                 <div className="text-xs sm:text-sm font-black text-foreground font-mono mt-1">{inr(d.sales)}</div>
                 <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{d.orders} orders</div>
