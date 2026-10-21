@@ -29,20 +29,23 @@ const defaultQueryClient = new QueryClient({
   },
 });
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error("TanStack Root Error:", error);
+import type { ErrorComponentProps } from "@tanstack/react-router";
+
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
+  const err = error instanceof Error ? error : new Error(String(error));
+  console.error("TanStack Root Error:", err);
   const router = useRouter();
-  useEffect(() => { reportLovableError(error, { boundary: "tanstack_root_error_component" }); }, [error]);
+  useEffect(() => { reportLovableError(err, { boundary: "tanstack_root_error_component" }); }, [err]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-xl rounded-2xl border bg-card p-6 text-left shadow-2xl">
         <h1 className="text-lg font-black text-destructive">Application Load Error</h1>
         <p className="mt-2 text-xs font-mono text-foreground bg-muted p-3 rounded-xl overflow-x-auto">
-          {error?.message || String(error)}
+          {err.message || String(err)}
         </p>
-        {error?.stack && (
+        {err.stack && (
           <pre className="mt-2 text-[10px] font-mono text-muted-foreground bg-muted/50 p-2 rounded-xl overflow-x-auto max-h-40">
-            {error.stack}
+            {err.stack}
           </pre>
         )}
         <div className="mt-4 flex gap-2">
@@ -59,8 +62,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Tan's Kitchen — Restaurant Order Management" },
-      { name: "description", content: "Restaurant POS and order management." },
+      { title: "Meat Theory — Restaurant Order Management" },
+      { name: "description", content: "Meat Theory POS — Tested, Crafted, Served. Restaurant POS and Order Management." },
+    ],
+    links: [
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "alternate icon", href: "/favicon.ico" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   component: RootComponent,

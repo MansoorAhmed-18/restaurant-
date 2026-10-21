@@ -88,9 +88,20 @@ function Invoice() {
       {/* Printable Invoice Receipt Card */}
       <div className="card-surface mx-auto max-w-lg p-8 print:shadow-none">
         <div className="text-center">
-          <div className="text-2xl font-black text-primary">Tan&apos;s Kitchen</div>
-          <div className="font-bold text-sm">Spice Route Kitchen</div>
-          <div className="text-xs text-muted-foreground">12, 100 Ft Road, Indiranagar, Bengaluru 560038</div>
+          <div className="mx-auto mb-2 size-12 drop-shadow-sm">
+            <svg viewBox="0 0 200 208" className="size-full">
+              <polygon points="100,10 182,56 182,152 100,198 18,152 18,56" fill="#FFFFFF" stroke="#E5A823" strokeWidth="6" strokeLinejoin="round"/>
+              <polygon points="100,20 173,61 173,147 100,188 27,147 27,61" fill="none" stroke="#401278" strokeWidth="3" strokeLinejoin="round"/>
+              <g>
+                <path d="M 100,97 C 95,92 90,86 89,79 C 88,71 81,67 83,57 C 85,48 91,52 92,47 C 93,42 94,32 100,24 C 106,32 107,42 108,47 C 109,52 115,48 117,57 C 119,67 112,71 111,79 C 110,86 105,92 100,97 Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1" strokeLinejoin="round"/>
+                <path d="M 100,94 C 96,89 93,84 92,77 C 91,72 86,68 88,61 C 90,57 93,59 94,55 C 95,50 96,42 100,35 C 104,42 105,50 106,55 C 107,59 110,57 112,61 C 114,68 109,72 108,77 C 107,84 104,89 100,94 Z" fill="#EA580C"/>
+              </g>
+              <path d="M 45,76 L 68,76 L 90,92 L 100,97 L 110,92 L 132,76 L 155,76 L 155,142 L 132,142 L 132,94 L 112,94 L 112,168 L 88,168 L 88,94 L 68,94 L 68,142 L 45,142 Z" fill="#4C168A" stroke="#250645" strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="text-2xl font-black text-primary tracking-tight uppercase">Meat Theory</div>
+          <div className="font-extrabold text-xs text-amber-600 tracking-wider">TESTED • CRAFTED • SERVED</div>
+          <div className="text-xs text-muted-foreground mt-0.5">7, Masthan Sahib Street, Nehru Nagar, Pallavaram, Chennai</div>
         </div>
         <div className="my-5 grid grid-cols-2 gap-y-1.5 border-y border-dashed py-3.5 text-xs">
           <span className="text-muted-foreground font-semibold">Invoice No</span>
@@ -145,7 +156,7 @@ function Invoice() {
             <span className="text-primary">{inr(o.total)}</span>
           </div>
         </div>
-        <p className="mt-6 text-center text-xs text-muted-foreground font-medium">Thank you for dining with us! 🧡</p>
+        <p className="mt-6 text-center text-xs text-muted-foreground font-medium">Thank you for dining at Meat Theory! 🔥🥩</p>
       </div>
     </AppShell>
   );

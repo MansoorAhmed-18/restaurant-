@@ -157,7 +157,8 @@ export function Dashboard() {
   const peakDay = useMemo(() => {
     const list = [...weeklyData];
     const max = list.sort((a, b) => b.sales - a.sales)[0];
-    return max && max.sales > 0 ? max : weeklyData.find((w) => w.isToday) || weeklyData[0];
+    const found = (max && max.sales > 0 ? max : weeklyData.find((w) => w.isToday)) || weeklyData[0];
+    return found ?? { day: "Mon", dayFull: "Monday", sales: 0, orders: 0, isToday: true };
   }, [weeklyData]);
 
   const handleRefresh = async () => {

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 
 export const Route = createFileRoute("/payments")({
-  validateSearch: (s: Record<string, unknown>) => ({ order: typeof s.order === "string" ? s.order : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ order: typeof s["order"] === "string" ? s["order"] : undefined }),
   head: () => meta("Payments", "Payment status for every bill plus UPI QR collection."),
   component: Payments,
 });
@@ -84,7 +84,7 @@ function Payments() {
                   <FakeQr seed={sel.number} />
                   <span className="mt-3 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-yellow-400 text-purple-950 shadow-xs">Scan & Pay Instant UPI</span>
                   <div className="mt-2 text-sm font-black text-foreground">Scan with any UPI app</div>
-                  <div className="text-xs text-muted-foreground font-mono">spiceroute@upi · GPay · PhonePe · Paytm</div>
+                  <div className="text-xs text-muted-foreground font-mono">meat.theory@upi · GPay · PhonePe · Paytm</div>
                 </div>
               )}
               {method === "cash" && <div className="mt-5 rounded-2xl bg-muted p-5 text-center text-sm font-medium text-foreground">Collect <span className="font-bold text-primary font-mono">{inr(sel.total)}</span> in cash and confirm.</div>}

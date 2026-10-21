@@ -70,22 +70,22 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.04 285);
   
-  /* Impressive Royal Violet */
-  --primary: oklch(0.53 0.28 288);
+  /* Meat Theory Royal Violet */
+  --primary: oklch(0.48 0.27 290);
   --primary-foreground: oklch(1 0 0);
-  --primary-soft: oklch(0.955 0.045 288);
+  --primary-soft: oklch(0.95 0.04 290);
   
   --secondary: oklch(0.96 0.015 285);
   --secondary-foreground: oklch(0.25 0.04 285);
   --muted: oklch(0.955 0.012 285);
   --muted-foreground: oklch(0.52 0.03 285);
   
-  /* Radiant High-Contrast Yellow / Gold */
-  --accent: oklch(0.95 0.08 95);
-  --accent-foreground: oklch(0.35 0.15 75);
-  --yellow: oklch(0.86 0.19 92);
+  /* Meat Theory Radiant Gold / Flame Amber */
+  --accent: oklch(0.95 0.07 88);
+  --accent-foreground: oklch(0.35 0.16 75);
+  --yellow: oklch(0.83 0.18 85);
   --yellow-foreground: oklch(0.25 0.1 75);
-  --yellow-soft: oklch(0.965 0.08 95);
+  --yellow-soft: oklch(0.96 0.07 88);
   
   --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(1 0 0);

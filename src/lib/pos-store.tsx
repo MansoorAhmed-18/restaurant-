@@ -6,11 +6,11 @@ import { consolidateOrderItems } from "./utils";
 
 interface Store {
   cart: OrderItem[];
-  tableId?: string;
-  customerId?: string;
-  setTableId: (id?: string) => void;
-  setCustomerId: (id?: string) => void;
-  addCustomer: (c: { name: string; email?: string }) => Customer;
+  tableId?: string | undefined;
+  customerId?: string | undefined;
+  setTableId: (id?: string | undefined) => void;
+  setCustomerId: (id?: string | undefined) => void;
+  addCustomer: (c: { name: string; email?: string | undefined }) => Customer;
   add: (p: Product) => void;
   setQty: (productId: string, qty: number) => void;
   clearCart: () => void;
@@ -21,7 +21,7 @@ interface Store {
   products: Product[];
   customers: Customer[];
   setProducts: (fn: (p: Product[]) => Product[]) => void;
-  placeOrder: () => Order | null;
+  placeOrder: (paidWithMethod?: PaymentMethod) => Order | null;
   payOrder: (id: string, method: PaymentMethod) => void;
   setOrderStatus: (id: string, s: OrderStatus) => void;
   setTables: (fn: (t: RestaurantTable[]) => RestaurantTable[]) => void;
@@ -206,20 +206,61 @@ export function PosProvider({ children }: { children: ReactNode }) {
         console.error("Failed to clear local orders:", e);
       }
     },
-    placeOrder: () => {
+    placeOrder: (paidWithMethod?: PaymentMethod) => {
       if (!cart.length) return null;
       const consolidatedItems = consolidateOrderItems(cart);
       const subtotal = consolidatedItems.reduce((s, i) => s + i.price * i.qty, 0);
       const tax = 0;
       const total = subtotal + tax;
       const number = Math.max(...orders.map((o) => o.number), 1000) + 1;
+      const isPaidDirectly = Boolean(paidWithMethod);
       const o: Order = {
-        id: `o${number}`, number, items: consolidatedItems, subtotal, tax, total, tableId, customerId, status: "pending", paymentStatus: "unpaid",
-        createdAt: new Date().toISOString(), type: tableId ? "dine-in" : "takeaway",
+        id: `o${number}`,
+        number,
+        items: consolidatedItems,
+        subtotal,
+        tax,
+        total,
+        tableId,
+        customerId,
+        status: isPaidDirectly ? "completed" : "pending",
+        paymentStatus: isPaidDirectly ? "paid" : "unpaid",
+        paymentMethod: paidWithMethod,
+        createdAt: new Date().toISOString(),
+        type: tableId ? "dine-in" : "takeaway",
       };
       setOrders((os) => [o, ...os]);
-      if (tableId) setTables((ts) => ts.map((t) => (t.id === tableId ? { ...t, status: "occupied", orderId: o.id } : t)));
+      if (tableId) {
+        setTables((ts) =>
+          ts.map((t) =>
+            t.id === tableId
+              ? isPaidDirectly
+                ? { ...t, status: "available", orderId: undefined }
+                : { ...t, status: "occupied", orderId: o.id }
+              : t
+          )
+        );
+      }
       
+      // Update customer total spent & visits if linked and paid directly
+      if (isPaidDirectly && customerId) {
+        setCustomers((cs) =>
+          cs.map((c) => {
+            if (c.id === customerId) {
+              const updatedCustomer = {
+                ...c,
+                visits: c.visits + 1,
+                totalSpent: c.totalSpent + o.total,
+                lastVisit: new Date().toISOString(),
+              };
+              syncCustomerToSupabase(updatedCustomer);
+              return updatedCustomer;
+            }
+            return c;
+          })
+        );
+      }
+
       // Reset cart and transient customer
       setCart([]); 
       setTableId(undefined);

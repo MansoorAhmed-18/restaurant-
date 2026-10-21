@@ -21,20 +21,43 @@ const nav = [
   { to: "/payments", label: "Payments", icon: CreditCard },
 ] as const;
 
-export function Logo() {
+export function Logo({ className }: { className?: string }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="relative grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary via-primary/95 to-purple-800 text-lg font-black text-yellow-300 shadow-[var(--shadow-lift)] ring-2 ring-yellow-400/30">
-        <span>T</span>
-        <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-yellow-400 ring-2 ring-card animate-pulse" />
+    <div className={`flex items-center gap-2.5 ${className ?? ""}`}>
+      <div className="relative size-10 shrink-0 drop-shadow-sm transition-transform hover:scale-105">
+        <svg viewBox="0 0 200 208" className="size-full" aria-label="Meat Theory Logo">
+          <defs>
+            <linearGradient id="navGoldHex" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FCD34D"/>
+              <stop offset="40%" stopColor="#E5A823"/>
+              <stop offset="100%" stopColor="#B45309"/>
+            </linearGradient>
+            <linearGradient id="navPurpGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#4C168A"/>
+              <stop offset="100%" stopColor="#320C65"/>
+            </linearGradient>
+            <linearGradient id="navFlameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#EA580C"/>
+              <stop offset="50%" stopColor="#F59E0B"/>
+              <stop offset="100%" stopColor="#FDE047"/>
+            </linearGradient>
+          </defs>
+          <polygon points="100,10 182,56 182,152 100,198 18,152 18,56" fill="#FFFFFF" stroke="url(#navGoldHex)" strokeWidth="6" strokeLinejoin="round"/>
+          <polygon points="100,20 173,61 173,147 100,188 27,147 27,61" fill="none" stroke="#401278" strokeWidth="3" strokeLinejoin="round"/>
+          <g className="animate-pulse">
+            <path d="M 100,97 C 95,92 90,86 89,79 C 88,71 81,67 83,57 C 85,48 91,52 92,47 C 93,42 94,32 100,24 C 106,32 107,42 108,47 C 109,52 115,48 117,57 C 119,67 112,71 111,79 C 110,86 105,92 100,97 Z" fill="url(#navFlameGrad)" stroke="#D97706" strokeWidth="1" strokeLinejoin="round"/>
+            <path d="M 100,94 C 96,89 93,84 92,77 C 91,72 86,68 88,61 C 90,57 93,59 94,55 C 95,50 96,42 100,35 C 104,42 105,50 106,55 C 107,59 110,57 112,61 C 114,68 109,72 108,77 C 107,84 104,89 100,94 Z" fill="#EA580C"/>
+          </g>
+          <path d="M 45,76 L 68,76 L 90,92 L 100,97 L 110,92 L 132,76 L 155,76 L 155,142 L 132,142 L 132,94 L 112,94 L 112,168 L 88,168 L 88,94 L 68,94 L 68,142 L 45,142 Z" fill="url(#navPurpGrad)" stroke="#250645" strokeWidth="1.5" strokeLinejoin="round"/>
+        </svg>
       </div>
       <div className="leading-tight">
-        <div className="font-extrabold text-foreground flex items-center gap-1.5">
-          <span>Tan&apos;s Kitchen</span>
+        <div className="font-black text-foreground text-[15px] tracking-tight flex items-center gap-1.5 uppercase">
+          <span>Meat Theory</span>
         </div>
-        <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-          <span className="size-1.5 rounded-full bg-yellow-500 inline-block"></span>
-          <span>Spice Route POS</span>
+        <div className="text-[10px] font-black text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1">
+          <span className="size-1 rounded-full bg-amber-500 inline-block animate-ping"></span>
+          <span>TESTED • CRAFTED • SERVED</span>
         </div>
       </div>
     </div>

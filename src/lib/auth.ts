@@ -71,7 +71,8 @@ export function getRegisteredAccounts(): StaffAccount[] {
     const parsed: StaffAccount[] = JSON.parse(raw);
     // Ensure manager always exists
     if (!parsed.some((a) => a.role === "Manager")) {
-      parsed.unshift(DEFAULT_INITIAL_ACCOUNTS[0]);
+      const defaultMgr = DEFAULT_INITIAL_ACCOUNTS[0];
+      if (defaultMgr) parsed.unshift(defaultMgr);
       localStorage.setItem(STORAGE_ACCOUNTS_KEY, JSON.stringify(parsed));
     }
     return parsed;
@@ -126,7 +127,7 @@ export async function syncAccountsFromCloud(): Promise<StaffAccount[]> {
 export function getManagerAccount(): StaffAccount {
   const accounts = getRegisteredAccounts();
   const mgr = accounts.find((a) => a.role === "Manager");
-  return mgr || DEFAULT_INITIAL_ACCOUNTS[0];
+  return mgr || DEFAULT_INITIAL_ACCOUNTS[0]!;
 }
 
 export async function updateManagerCredentials(name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> {
@@ -318,8 +319,10 @@ export function logout() {
 export function getStaffInitials(name: string): string {
   if (!name) return "ST";
   const parts = name.trim().split(" ");
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+  const p0 = parts[0];
+  const p1 = parts[1];
+  if (p0 && p1 && p0[0] && p1[0]) {
+    return (p0[0] + p1[0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
 }

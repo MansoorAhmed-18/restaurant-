@@ -59,9 +59,8 @@ export function Pos() {
   };
 
   const handleCompletePayment = (shouldSendWhatsApp: boolean = false) => {
-    const o = pos.placeOrder();
+    const o = pos.placeOrder(selectedMethod);
     if (!o) return;
-    pos.payOrder(o.id, selectedMethod);
     toast.success(`Bill #${o.number} paid via ${selectedMethod.toUpperCase()}!`);
     setPayModalOpen(false);
 

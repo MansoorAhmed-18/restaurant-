@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { consolidateOrderItems } from "./utils";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gxwarlojidcebchmxkpz.supabase.co";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4d2FybG9qaWRjZWJjaG14a3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjI1NzksImV4cCI6MjEwNTk5ODU3OX0.8ICJuZsQyeqKlenIkN9AUVuBtwA8mAMciQN3ljUyotk";
+const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || "https://gxwarlojidcebchmxkpz.supabase.co";
+const supabaseAnonKey = import.meta.env["VITE_SUPABASE_ANON_KEY"] || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4d2FybG9qaWRjZWJjaG14a3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MjI1NzksImV4cCI6MjEwNTk5ODU3OX0.8ICJuZsQyeqKlenIkN9AUVuBtwA8mAMciQN3ljUyotk";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -68,10 +68,10 @@ export async function syncCustomerToSupabase(customer: any) {
   }
 }
 
-/**
- * Sync a newly completed billing order directly into Supabase
- */
-export async function syncOrderToSupabase(order: any) {
+// Mutex queue to ensure sync operations for the same order run sequentially
+const orderSyncQueue = new Map<string, Promise<boolean>>();
+
+async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
   if (!supabase) return false;
 
   try {
@@ -98,7 +98,7 @@ export async function syncOrderToSupabase(order: any) {
       return false;
     }
 
-    // Insert order line items (delete existing items for this order first to avoid double counting!)
+    // Insert order line items (delete existing items for this order first to avoid double counting)
     if (order.items && order.items.length > 0) {
       await supabase.from("order_items").delete().eq("order_id", order.id);
 
@@ -125,6 +125,26 @@ export async function syncOrderToSupabase(order: any) {
 }
 
 /**
+ * Sync a newly completed billing order directly into Supabase (queued per order ID to prevent race conditions)
+ */
+export async function syncOrderToSupabase(order: any): Promise<boolean> {
+  if (!supabase || !order?.id) return false;
+
+  const prev = orderSyncQueue.get(order.id) || Promise.resolve(true);
+  const next = prev
+    .catch(() => true)
+    .then(() => executeSyncOrderToSupabase(order));
+
+  orderSyncQueue.set(order.id, next);
+
+  const res = await next;
+  if (orderSyncQueue.get(order.id) === next) {
+    orderSyncQueue.delete(order.id);
+  }
+  return res;
+}
+
+/**
  * Fetch all billing orders from Supabase database to hydrate state on load/refresh
  */
 export async function fetchOrdersFromSupabase() {
@@ -148,6 +168,22 @@ export async function fetchOrdersFromSupabase() {
         qty: Number(item.qty || 1),
       }));
 
+      const consolidated = consolidateOrderItems(rawItems);
+      const orderTotal = Number(o.total || 0);
+
+      // Auto-sanitize duplicate multiples if duplicate rows exist in db
+      let normalizedItems = consolidated;
+      if (orderTotal > 0 && consolidated.length > 0) {
+        const itemsSum = consolidated.reduce((s, i) => s + i.price * i.qty, 0);
+        const ratio = Math.round(itemsSum / orderTotal);
+        if (ratio > 1 && Math.abs(itemsSum - orderTotal * ratio) < 5) {
+          normalizedItems = consolidated.map((item) => ({
+            ...item,
+            qty: Math.max(1, Math.round(item.qty / ratio)),
+          }));
+        }
+      }
+
       return {
         id: o.id,
         number: o.number,
@@ -155,13 +191,13 @@ export async function fetchOrdersFromSupabase() {
         customerId: o.customer_id || undefined,
         subtotal: Number(o.subtotal || 0),
         tax: Number(o.tax || 0),
-        total: Number(o.total || 0),
+        total: orderTotal,
         status: o.status || "pending",
         paymentStatus: o.payment_status || "unpaid",
         paymentMethod: o.payment_method || undefined,
         type: o.order_type || (o.table_id ? "dine-in" : "takeaway"),
         createdAt: o.created_at || new Date().toISOString(),
-        items: consolidateOrderItems(rawItems),
+        items: normalizedItems,
       };
     });
   } catch (err) {
@@ -355,18 +391,22 @@ export async function syncStaffAccountToSupabase(account: any) {
 
   try {
     // 1. Save to dedicated staff_accounts table if exists
-    supabase.from("staff_accounts").upsert(
-      {
-        id: account.id,
-        username: cleanUser,
-        name: cleanName,
-        role: account.role,
-        password: cleanPass,
-        created_at: account.createdAt || new Date().toISOString(),
-        created_by: account.createdBy || null,
-      },
-      { onConflict: "id" }
-    ).then(() => {}).catch(() => {});
+    try {
+      await supabase.from("staff_accounts").upsert(
+        {
+          id: account.id,
+          username: cleanUser,
+          name: cleanName,
+          role: account.role,
+          password: cleanPass,
+          created_at: account.createdAt || new Date().toISOString(),
+          created_by: account.createdBy || null,
+        },
+        { onConflict: "id" }
+      );
+    } catch {
+      // Table may not exist yet, ignore
+    }
 
     // 2. Guaranteed cloud persistence in verified database table
     const { error } = await supabase.from("customers").upsert(
@@ -398,7 +438,11 @@ export async function deleteStaffAccountFromSupabase(id: string, username?: stri
 
   try {
     // Delete from staff_accounts
-    supabase.from("staff_accounts").delete().eq("id", id).then(() => {}).catch(() => {});
+    try {
+      await supabase.from("staff_accounts").delete().eq("id", id);
+    } catch {
+      // Ignore if table does not exist
+    }
     
     // Delete from cloud store
     if (cleanUser) {

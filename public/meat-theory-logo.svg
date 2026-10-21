@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" width="100%" height="100%">
+  <defs>
+    <!-- Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="30%" stop-color="#E5A823"/>
+      <stop offset="80%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <!-- Deep Royal Purple Gradient -->
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4C148B"/>
+      <stop offset="60%" stop-color="#380E6B"/>
+      <stop offset="100%" stop-color="#240747"/>
+    </linearGradient>
+
+    <!-- Flame Gradients -->
+    <linearGradient id="flameOuter" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="40%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FDE047"/>
+    </linearGradient>
+
+    <linearGradient id="flameInner" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#B91C1C"/>
+      <stop offset="50%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#FEF08A"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filters -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+    <filter id="flameGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#F59E0B" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- TOP HEXAGON EMBLEM -->
+  <g transform="translate(210, 8)" filter="url(#shadow)">
+    <!-- Base White Polygon -->
+    <polygon
+      points="90,8 165,50 165,136 90,178 15,136 15,50"
+      fill="#FFFFFF"
+    />
+    <!-- Outer Gold Border -->
+    <polygon
+      points="90,8 165,50 165,136 90,178 15,136 15,50"
+      fill="none"
+      stroke="url(#goldGrad)"
+      stroke-width="4.5"
+      stroke-linejoin="round"
+    />
+    <!-- Inner Purple Border -->
+    <polygon
+      points="90,17 157,55 157,132 90,170 23,132 23,55"
+      fill="none"
+      stroke="#3F1170"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+
+    <!-- Flame Above M -->
+    <g filter="url(#flameGlow)">
+      <!-- Outer Flame -->
+      <path
+        d="M 90,87
+           C 85,82 81,77 80,70
+           C 79,63 73,59 75,50
+           C 77,42 82,46 83,41
+           C 84,37 85,28 90,20
+           C 95,28 96,37 97,41
+           C 98,46 103,42 105,50
+           C 107,59 101,63 100,70
+           C 99,77 95,82 90,87 Z"
+        fill="url(#flameOuter)"
+        stroke="#D97706"
+        stroke-width="1"
+        stroke-linejoin="round"
+      />
+      <!-- Inner Flame -->
+      <path
+        d="M 90,84
+           C 86,80 84,75 83,69
+           C 82,64 78,61 80,54
+           C 82,50 84,52 85,48
+           C 86,44 87,36 90,30
+           C 93,36 94,44 95,48
+           C 96,52 98,50 100,54
+           C 102,61 98,64 97,69
+           C 96,75 94,80 90,84 Z"
+        fill="url(#flameInner)"
+      />
+      <ellipse cx="90" cy="66" rx="1.8" ry="6" fill="#FFFBEB" opacity="0.85"/>
+    </g>
+
+    <!-- 'M' Symbol -->
+    <path
+      d="M 40,68
+         L 60,68
+         L 80,82
+         L 90,87
+         L 100,82
+         L 120,68
+         L 140,68
+         L 140,128
+         L 120,128
+         L 120,85
+         L 101,85
+         L 101,152
+         L 79,152
+         L 79,85
+         L 60,85
+         L 60,128
+         L 40,128
+         Z"
+      fill="url(#purpleGrad)"
+      stroke="#240747"
+      stroke-width="1.5"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- MIDDLE BANNER: BBQ FORK + MEAT THEORY + SPATULA -->
+  <g transform="translate(0, 210)">
+    <!-- Left BBQ Carving Fork -->
+    <g transform="translate(18, 52)">
+      <!-- Fork shaft and handle -->
+      <line x1="0" y1="0" x2="65" y2="0" stroke="#3F1170" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="0" y1="0" x2="65" y2="0" stroke="url(#goldGrad)" stroke-width="2" stroke-linecap="round"/>
+      <!-- Fork Head / Two Prongs -->
+      <path
+        d="M 65,-10 
+           L 95,-10 
+           Q 80,0 65,0 
+           Q 80,0 95,10 
+           L 65,10"
+        fill="none"
+        stroke="#3F1170"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M 65,-10 
+           L 95,-10 
+           Q 80,0 65,0 
+           Q 80,0 95,10 
+           L 65,10"
+        fill="none"
+        stroke="url(#goldGrad)"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+
+    <!-- "MEAT THEORY" Main Typography -->
+    <text
+      x="300"
+      y="66"
+      text-anchor="middle"
+      font-family="'Plus Jakarta Sans', Impact, 'Arial Black', sans-serif"
+      font-weight="900"
+      font-size="54"
+      letter-spacing="4"
+      fill="url(#purpleGrad)"
+      stroke="#E5A823"
+      stroke-width="2"
+      paint-order="stroke fill"
+    >
+      MEAT THEORY
+    </text>
+
+    <!-- Right Grill Utensil / Turner Spatula -->
+    <g transform="translate(485, 52)">
+      <!-- Spatula Head -->
+      <rect x="0" y="-11" width="30" height="22" rx="3" fill="#3F1170" stroke="url(#goldGrad)" stroke-width="2"/>
+      <line x1="8" y1="-6" x2="8" y2="6" stroke="url(#goldGrad)" stroke-width="1.5"/>
+      <line x1="15" y1="-6" x2="15" y2="6" stroke="url(#goldGrad)" stroke-width="1.5"/>
+      <line x1="22" y1="-6" x2="22" y2="6" stroke="url(#goldGrad)" stroke-width="1.5"/>
+      <!-- Spatula Handle -->
+      <line x1="30" y1="0" x2="95" y2="0" stroke="#3F1170" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="30" y1="0" x2="95" y2="0" stroke="url(#goldGrad)" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- SUBTITLE: "TESTED - CRAFTED - SERVED" -->
+  <g transform="translate(0, 320)">
+    <text
+      x="300"
+      y="0"
+      text-anchor="middle"
+      font-family="'Plus Jakarta Sans', system-ui, sans-serif"
+      font-weight="800"
+      font-size="18"
+      letter-spacing="9"
+      fill="#E5A823"
+      stroke="#B45309"
+      stroke-width="0.6"
+    >
+      TESTED  -  CRAFTED  -  SERVED
+    </text>
+  </g>
+</svg>

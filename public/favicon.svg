@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 208" width="100%" height="100%">
+  <defs>
+    <!-- Brand Gradients -->
+    <linearGradient id="goldHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="40%" stop-color="#E5A823"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4C168A"/>
+      <stop offset="100%" stop-color="#320C65"/>
+    </linearGradient>
+
+    <linearGradient id="flameGradOuter" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="45%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FDE047"/>
+    </linearGradient>
+
+    <linearGradient id="flameGradInner" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#B91C1C"/>
+      <stop offset="40%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#FEF08A"/>
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#F59E0B" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Crisp Hexagon Background -->
+  <polygon
+    points="100,10 182,56 182,152 100,198 18,152 18,56"
+    fill="#FFFFFF"
+  />
+
+  <!-- Outer Hexagon Gold Stroke -->
+  <polygon
+    points="100,10 182,56 182,152 100,198 18,152 18,56"
+    fill="none"
+    stroke="url(#goldHexGrad)"
+    stroke-width="5"
+    stroke-linejoin="round"
+  />
+
+  <!-- Inner Hexagon Purple Stroke -->
+  <polygon
+    points="100,20 173,61 173,147 100,188 27,147 27,61"
+    fill="none"
+    stroke="#401278"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+
+  <!-- Fire Flame rising from center cleft of M -->
+  <g filter="url(#glow)">
+    <!-- Outer Flame Body (3 stylized licking tongues) -->
+    <path
+      d="M 100,97
+         C 95,92 90,86 89,79
+         C 88,71 81,67 83,57
+         C 85,48 91,52 92,47
+         C 93,42 94,32 100,24
+         C 106,32 107,42 108,47
+         C 109,52 115,48 117,57
+         C 119,67 112,71 111,79
+         C 110,86 105,92 100,97 Z"
+      fill="url(#flameGradOuter)"
+      stroke="#D97706"
+      stroke-width="1.2"
+      stroke-linejoin="round"
+    />
+
+    <!-- Inner Hot Core Flame -->
+    <path
+      d="M 100,94
+         C 96,89 93,84 92,77
+         C 91,72 86,68 88,61
+         C 90,57 93,59 94,55
+         C 95,50 96,42 100,35
+         C 104,42 105,50 106,55
+         C 107,59 110,57 112,61
+         C 114,68 109,72 108,77
+         C 107,84 104,89 100,94 Z"
+      fill="url(#flameGradInner)"
+      opacity="0.95"
+    />
+
+    <!-- Core Bright Spark -->
+    <ellipse cx="100" cy="74" rx="2" ry="7" fill="#FFFBEB" opacity="0.85"/>
+  </g>
+
+  <!-- Meat Theory Emblem 'M' -->
+  <path
+    d="M 45,76
+       L 68,76
+       L 90,92
+       L 100,97
+       L 110,92
+       L 132,76
+       L 155,76
+       L 155,142
+       L 132,142
+       L 132,94
+       L 112,94
+       L 112,168
+       L 88,168
+       L 88,94
+       L 68,94
+       L 68,142
+       L 45,142
+       Z"
+    fill="url(#purpleGrad)"
+    stroke="#250645"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+  />
+</svg>

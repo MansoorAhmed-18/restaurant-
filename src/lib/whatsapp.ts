@@ -13,9 +13,10 @@ export function buildWhatsAppBillText(order: Order, customerName?: string): stri
     .map((i) => `  • ${i.name} x${i.qty} — ₹${i.price * i.qty}`)
     .join("\n");
 
-  return `🧾 *TAN'S KITCHEN - OFFICIAL RECEIPT* 🧾
+  return `🧾 *MEAT THEORY - OFFICIAL RECEIPT* 🧾
+🔥 *TESTED • CRAFTED • SERVED* 🔥
 
-Hello! Thank you for dining with us.
+Hello! Thank you for dining with us at Meat Theory.
 
 *Invoice No:* INV-${order.number}
 *Date:* ${dateStr}
@@ -28,7 +29,8 @@ ${itemsText}
 *TOTAL AMOUNT PAID:* ₹${order.total}
 ---------------------------------
 
-Thank you for visiting Tan's Kitchen! 🧡`;
+Thank you for visiting Meat Theory! 🔥🥩
+Visit us again soon!`;
 }
 
 export function sendWhatsAppBill(order: Order, phoneInput?: string, customerName?: string) {

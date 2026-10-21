@@ -68,12 +68,36 @@ export function Login() {
         
         <div className="flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-yellow-300 to-yellow-500 text-purple-950 text-xl font-black shadow-xl ring-2 ring-yellow-300/40">
-              T
+            <div className="size-14 drop-shadow-lg">
+              <svg viewBox="0 0 200 208" className="size-full">
+                <defs>
+                  <linearGradient id="loginGoldHex" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FCD34D"/>
+                    <stop offset="40%" stopColor="#E5A823"/>
+                    <stop offset="100%" stopColor="#B45309"/>
+                  </linearGradient>
+                  <linearGradient id="loginPurpGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#4C168A"/>
+                    <stop offset="100%" stopColor="#320C65"/>
+                  </linearGradient>
+                  <linearGradient id="loginFlameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stopColor="#EA580C"/>
+                    <stop offset="50%" stopColor="#F59E0B"/>
+                    <stop offset="100%" stopColor="#FDE047"/>
+                  </linearGradient>
+                </defs>
+                <polygon points="100,10 182,56 182,152 100,198 18,152 18,56" fill="#FFFFFF" stroke="url(#loginGoldHex)" strokeWidth="6" strokeLinejoin="round"/>
+                <polygon points="100,20 173,61 173,147 100,188 27,147 27,61" fill="none" stroke="#401278" strokeWidth="3" strokeLinejoin="round"/>
+                <g className="animate-pulse">
+                  <path d="M 100,97 C 95,92 90,86 89,79 C 88,71 81,67 83,57 C 85,48 91,52 92,47 C 93,42 94,32 100,24 C 106,32 107,42 108,47 C 109,52 115,48 117,57 C 119,67 112,71 111,79 C 110,86 105,92 100,97 Z" fill="url(#loginFlameGrad)" stroke="#D97706" strokeWidth="1" strokeLinejoin="round"/>
+                  <path d="M 100,94 C 96,89 93,84 92,77 C 91,72 86,68 88,61 C 90,57 93,59 94,55 C 95,50 96,42 100,35 C 104,42 105,50 106,55 C 107,59 110,57 112,61 C 114,68 109,72 108,77 C 107,84 104,89 100,94 Z" fill="#EA580C"/>
+                </g>
+                <path d="M 45,76 L 68,76 L 90,92 L 100,97 L 110,92 L 132,76 L 155,76 L 155,142 L 132,142 L 132,94 L 112,94 L 112,168 L 88,168 L 88,94 L 68,94 L 68,142 L 45,142 Z" fill="url(#loginPurpGrad)" stroke="#250645" strokeWidth="1.5" strokeLinejoin="round"/>
+              </svg>
             </div>
             <div className="leading-tight">
-              <div className="text-xl font-black text-white">Tan&apos;s Kitchen</div>
-              <div className="text-xs text-yellow-200/80 font-medium">Spice Route Kitchen Systems</div>
+              <div className="text-2xl font-black text-white tracking-tight uppercase">Meat Theory</div>
+              <div className="text-xs text-yellow-300 font-extrabold tracking-wider">TESTED • CRAFTED • SERVED</div>
             </div>
           </div>
           <span className="rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 px-3.5 py-1 text-xs font-black backdrop-blur-md shadow-sm">
@@ -82,12 +106,12 @@ export function Login() {
         </div>
 
         <div className="z-10 my-auto py-12">
-          <div className="text-7xl mb-6">🔒 🍛 👨‍🍳</div>
+          <div className="text-7xl mb-6">🥩 🔥 👨‍🍳</div>
           <h2 className="text-4xl font-black leading-tight tracking-tight text-white">
             Role-Based Authentication & Terminal Protection.
           </h2>
           <p className="mt-4 max-w-md text-base text-violet-200/90 leading-relaxed font-medium">
-            Strict access control for Restaurant Managers, Cashiers, and Kitchen Staff. Direct URL access is blocked without valid credentials.
+            Strict access control for Meat Theory Managers, Cashiers, and Kitchen Staff. Direct URL access is blocked without valid credentials.
           </p>
 
           <div className="mt-8 space-y-3.5 border-t border-violet-700/50 pt-6">
@@ -107,7 +131,7 @@ export function Login() {
         </div>
 
         <div className="z-10 flex items-center justify-between text-xs text-violet-300/80 border-t border-violet-800/60 pt-4">
-          <span>Tan&apos;s Kitchen • Bengaluru, KA</span>
+          <span>Meat Theory • Tested • Crafted • Served</span>
           <span className="text-yellow-400/90 font-semibold">Protected POS & Kitchen Terminal</span>
         </div>
       </div>

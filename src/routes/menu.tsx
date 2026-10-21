@@ -51,7 +51,10 @@ function MenuPage() {
       veg: f.get("veg") === "on",
     };
 
-    if (!data.name || !data.price) return toast.error("Name and price are required");
+    if (!data.name || !data.price) {
+      toast.error("Name and price are required");
+      return;
+    }
 
     if (editing === "new") {
       const newProd = { ...data, id: `p${Date.now()}`, available: true, soldToday: 0 };

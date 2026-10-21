@@ -31,11 +31,18 @@ export const products: Product[] = [
   { id: "p17", name: "Rasmalai", categoryId: "c6", price: 140, emoji: "🍮", veg: true, available: true, soldToday: 18 },
 ];
 
+const statuses = ["available", "occupied", "reserved", "occupied", "available", "available", "reserved", "occupied", "available", "occupied", "available", "available"] as const;
+const seatCounts = [2, 4, 4, 6, 2, 4, 8, 4, 2, 6, 4, 2] as const;
+
 export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
-  const status = (["available", "occupied", "reserved", "occupied", "available", "available", "reserved", "occupied", "available", "occupied", "available", "available"] as const)[i];
+  const status = statuses[i] ?? "available";
+  const seats = seatCounts[i] ?? 4;
   return {
-    id: `t${i + 1}`, name: `T${String(i + 1).padStart(2, "0")}`, seats: [2, 4, 4, 6, 2, 4, 8, 4, 2, 6, 4, 2][i], status,
-    reservedFor: status === "reserved" ? ["Mehta · 8:30 PM", "Iyer · 9:00 PM"][i % 2] : undefined,
+    id: `t${i + 1}`,
+    name: `T${String(i + 1).padStart(2, "0")}`,
+    seats,
+    status,
+    reservedFor: status === "reserved" ? (["Mehta · 8:30 PM", "Iyer · 9:00 PM"][i % 2] ?? undefined) : undefined,
   };
 });
 
@@ -80,9 +87,11 @@ function generateYearData(year: number, baseMultiplier: number, growthFactor: nu
   const momGrowths = [8.5, 8.3, 13.5, 8.5, 10.9, -4.2, 7.4, 4.1, 3.9, 8.9, -4.7, 11.0];
 
   return months.map((m, idx) => {
-    const sales = Math.round(baseSales[idx] * baseMultiplier * growthFactor);
+    const bSales = baseSales[idx] ?? 500000;
+    const bOrders = baseOrders[idx] ?? 1000;
+    const sales = Math.round(bSales * baseMultiplier * growthFactor);
     const target = Math.round(sales * 0.95);
-    const orders = Math.round(baseOrders[idx] * growthFactor);
+    const orders = Math.round(bOrders * growthFactor);
     const dineIn = Math.round(sales * 0.65);
     const takeaway = sales - dineIn;
     const upi = Math.round(sales * 0.72);
@@ -101,7 +110,7 @@ function generateYearData(year: number, baseMultiplier: number, growthFactor: nu
       upi,
       cash,
       avgOrderValue,
-      momGrowth: momGrowths[idx],
+      momGrowth: momGrowths[idx] ?? 0,
     };
   });
 }
