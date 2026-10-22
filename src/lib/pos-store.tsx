@@ -15,6 +15,7 @@ interface Store {
   setQty: (productId: string, qty: number) => void;
   clearCart: () => void;
   clearAllOrders: () => void;
+  resetToOfficialMenu: () => void;
   totals: { subtotal: number; tax: number; total: number; count: number };
   orders: Order[];
   tables: RestaurantTable[];
@@ -28,6 +29,8 @@ interface Store {
 }
 
 const Ctx = createContext<Store | null>(null);
+
+const CURRENT_MENU_VERSION = "meat_theory_v2_final";
 
 // Helper for initial localStorage loading
 const loadStored = <T,>(key: string, fallback: T): T => {
@@ -55,7 +58,27 @@ export function PosProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setOrders(loadStored("res_pos_orders", []));
     setTables(loadStored("res_pos_tables", mock.tables));
-    setProducts(loadStored("res_pos_products", mock.products));
+    
+    // Check if stored products are from the old catalog or version is missing/outdated
+    const storedVer = typeof window !== "undefined" ? localStorage.getItem("res_pos_menu_ver") : null;
+    const storedProds = loadStored<Product[]>("res_pos_products", mock.products);
+    const hasOldItems = Array.isArray(storedProds) && (
+      storedProds.some((p) => p.id === "p1" || p.name === "Paneer Tikka" || p.name === "Butter Chicken" || p.name === "Dal Makhani") ||
+      storedProds.length === 0
+    );
+
+    if (storedVer !== CURRENT_MENU_VERSION || hasOldItems) {
+      setProducts(mock.products);
+      try {
+        localStorage.setItem("res_pos_products", JSON.stringify(mock.products));
+        localStorage.setItem("res_pos_menu_ver", CURRENT_MENU_VERSION);
+      } catch (e) {
+        console.error("Failed to migrate products:", e);
+      }
+    } else {
+      setProducts(storedProds);
+    }
+
     setCustomers(loadStored("res_pos_customers", mock.customers));
   }, []);
 
@@ -117,12 +140,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
         fetchProductsFromSupabase().then((remoteProducts) => {
           if (isMounted && remoteProducts && Array.isArray(remoteProducts) && remoteProducts.length > 0) {
-            setProducts((localProds) => {
-              const map = new Map<string, Product>();
-              (localProds || []).forEach((p) => p && p.id && map.set(p.id, p));
-              remoteProducts.forEach((rp: Product) => rp && rp.id && map.set(rp.id, rp));
-              return Array.from(map.values());
-            });
+            const cleaned = remoteProducts.filter((rp: Product) => 
+              rp.id !== "p1" && rp.id !== "p2" && rp.name !== "Paneer Tikka" && rp.name !== "Butter Chicken" && rp.name !== "Dal Makhani"
+            );
+            if (cleaned.length > 0) {
+              setProducts((localProds) => {
+                const map = new Map<string, Product>();
+                (localProds || []).forEach((p) => p && p.id && map.set(p.id, p));
+                cleaned.forEach((rp: Product) => rp && rp.id && map.set(rp.id, rp));
+                return Array.from(map.values());
+              });
+            }
           }
         });
       }
@@ -204,6 +232,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("res_pos_orders");
       } catch (e) {
         console.error("Failed to clear local orders:", e);
+      }
+    },
+    resetToOfficialMenu: () => {
+      setProducts(mock.products);
+      try {
+        localStorage.setItem("res_pos_products", JSON.stringify(mock.products));
+        localStorage.setItem("res_pos_menu_ver", CURRENT_MENU_VERSION);
+      } catch (e) {
+        console.error("Failed to reset menu:", e);
       }
     },
     placeOrder: (paidWithMethod?: PaymentMethod) => {

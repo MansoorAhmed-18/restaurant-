@@ -30,7 +30,7 @@ function formatOrderDateTime(isoString?: string) {
 }
 
 function Orders() {
-  const { orders, setOrderStatus } = usePos();
+  const { orders, setOrderStatus, tables } = usePos();
   const [tab, setTab] = useState("active");
   const [openId, setOpenId] = useState<string | null>(null);
   const t = tabs.find((x) => x.id === tab)!;
@@ -77,7 +77,7 @@ function Orders() {
                         <span>{dt.time}</span>
                       </div>
                     </td>
-                    <td className="p-4 font-semibold">{o.tableId ? `Table ${o.tableId.slice(1)}` : "Takeaway"}</td>
+                    <td className="p-4 font-semibold">{o.tableId ? (tables.find((tbl) => tbl.id === o.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === o.tableId)?.name}` : `Table ${o.tableId}`) : "Takeaway"}</td>
                     <td className="p-4">{consolidateOrderItems(o.items).reduce((s, i) => s + i.qty, 0)} items</td>
                     <td className="p-4 font-black text-foreground">{inr(o.total)}</td>
                     <td className="p-4"><StatusBadge status={o.status} /></td>
@@ -129,7 +129,7 @@ function Orders() {
                   </div>
 
                   <div className="flex gap-2"><StatusBadge status={sel.status} /><StatusBadge status={sel.paymentStatus} /></div>
-                  <div className="text-sm text-muted-foreground">{sel.tableId ? `Table ${sel.tableId.slice(1)}` : "Takeaway"} · Walk-in Guest</div>
+                  <div className="text-sm text-muted-foreground">{sel.tableId ? (tables.find((tbl) => tbl.id === sel.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === sel.tableId)?.name}` : `Table ${sel.tableId}`) : "Takeaway"} · Walk-in Guest</div>
                   <ul className="space-y-2 border-y py-3 text-sm">
                     {consolidateOrderItems(sel.items).map((i, idx) => <li key={`${i.productId || i.name}-${idx}`} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
                   </ul>

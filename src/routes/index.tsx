@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { 
   IndianRupee, TrendingUp, TrendingDown, RefreshCw, 
   Plus, Calendar, BarChart2, CheckCircle2, Clock, 
-  ArrowUpRight, Sparkles, Layers, ExternalLink, Settings
+  ArrowUpRight, Sparkles, Layers, ExternalLink, Settings, Utensils
 } from "lucide-react";
 import { 
   Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
@@ -15,6 +15,7 @@ import { PageHeader, StatusBadge } from "@/components/pos/ui";
 import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
+import { cn } from "@/lib/utils";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
 import { getActiveStaff, type StaffUser } from "@/lib/auth";
 
@@ -36,7 +37,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export function Dashboard() {
-  const { orders } = usePos();
+  const { orders, tables } = usePos();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [staff, setStaff] = useState<StaffUser>(() => getActiveStaff() || { name: "Staff", role: "Manager", username: "manager" });
   const [fabricUrl, setFabricUrl] = useState<string>(DEFAULT_FABRIC_URL);
@@ -507,6 +508,49 @@ export function Dashboard() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Live Dine-in Tables Floor Glance */}
+        <div className="card-surface p-4 sm:p-5 min-w-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h2 className="font-extrabold text-sm sm:text-base flex items-center gap-2 text-foreground">
+                <Utensils className="size-4 text-primary shrink-0" /> Live Dine-in Floor & Tables
+              </h2>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">
+                {tables.filter((t) => t.status === "available").length} Available
+              </span>
+            </div>
+            <Link to="/tables" className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-primary hover:underline">
+              Manage Tables <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+            {tables.map((t) => (
+              <Link
+                key={t.id}
+                to="/tables"
+                className={cn(
+                  "rounded-xl border p-2 text-center transition-all hover:scale-105 shadow-sm",
+                  t.status === "available" && "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500",
+                  t.status === "occupied" && "border-primary/40 bg-primary/10 hover:border-primary",
+                  t.status === "reserved" && "border-amber-500/30 bg-amber-500/5 hover:border-amber-500"
+                )}
+              >
+                <div className="text-xs font-black text-foreground">{t.name}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">{t.seats} seats</div>
+                <div className={cn(
+                  "mt-1 text-[9px] font-black uppercase tracking-tight",
+                  t.status === "available" && "text-emerald-600",
+                  t.status === "occupied" && "text-primary",
+                  t.status === "reserved" && "text-amber-600"
+                )}>
+                  {t.status}
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </AppShell>

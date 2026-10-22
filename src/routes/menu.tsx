@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { Pencil, Plus, Trash2, Search, SlidersHorizontal } from "lucide-react";
+import { Pencil, Plus, Trash2, Search, SlidersHorizontal, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, ErrorState, LoadingGrid, PageHeader, VegMark } from "@/components/pos/ui";
@@ -22,23 +22,21 @@ export const Route = createFileRoute("/menu")({
 });
 
 function MenuPage() {
-  const { products, setProducts } = usePos();
+  const { products, setProducts, resetToOfficialMenu } = usePos();
   const q = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   const [extraCats, setExtraCats] = useState<Category[]>([]);
   const cats = [...(q.data ?? []), ...extraCats];
   const [cat, setCat] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [vegOnly, setVegOnly] = useState(false);
   const [editing, setEditing] = useState<Product | "new" | null>(null);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchCat = cat === "all" || p.categoryId === cat;
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchVeg = vegOnly ? p.veg : true;
-      return matchCat && matchSearch && matchVeg;
+      return matchCat && matchSearch;
     });
-  }, [products, cat, searchQuery, vegOnly]);
+  }, [products, cat, searchQuery]);
 
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,10 +72,22 @@ function MenuPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Menu & Dishes 🍲"
-        subtitle={`${products.length} dishes across ${cats.length} categories`}
+        title="Meat Theory Menu 🥩"
+        subtitle={`${products.length} crafted dishes across ${cats.length} specialty categories`}
         actions={
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => {
+                if (confirm("Reset to official Meat Theory menu from the brand card? This will restore all standard items and prices.")) {
+                  resetToOfficialMenu();
+                  toast.success("Official Meat Theory menu restored!");
+                }
+              }}
+              title="Restore Authentic Menu"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3.5 py-2.5 text-xs font-black shadow-sm hover:bg-amber-500/20 transition-colors"
+            >
+              <RotateCcw className="size-3.5" /> Official Menu
+            </button>
             <button
               onClick={() => {
                 const n = prompt("New category name");
@@ -94,7 +104,7 @@ function MenuPage() {
             </button>
             <button
               onClick={() => setEditing("new")}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow hover:opacity-90 transition-opacity"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow hover:opacity-90 transition-opacity ring-1 ring-yellow-400/30"
             >
               <Plus className="size-4" /> Add Dish
             </button>
@@ -102,9 +112,9 @@ function MenuPage() {
         }
       />
 
-      {/* Mobile Search & Filter Toolbar */}
-      <div className="mb-4 flex flex-col sm:flex-row items-center gap-2.5">
-        <div className="relative flex-1 w-full">
+      {/* Search Toolbar */}
+      <div className="mb-4">
+        <div className="relative w-full">
           <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -114,33 +124,43 @@ function MenuPage() {
             className="h-11 w-full rounded-2xl border bg-card pl-10 pr-4 text-xs font-medium outline-none focus:ring-2 focus:ring-primary shadow-sm"
           />
         </div>
-
-        <button
-          onClick={() => setVegOnly(!vegOnly)}
-          className={cn(
-            "h-11 shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-extrabold transition-colors shadow-sm",
-            vegOnly ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "bg-card text-muted-foreground hover:border-primary"
-          )}
-        >
-          <span className="size-2 rounded-full bg-emerald-500"></span> Veg Only
-        </button>
       </div>
 
       {/* Category Scroll Chips */}
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
         {[{ id: "all", name: "All Items", emoji: "🍽️" }, ...cats].map((c) => (
           <button
             key={c.id}
             onClick={() => setCat(c.id)}
             className={cn(
               "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-all shadow-sm",
-              cat === c.id ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:border-primary text-foreground"
+              cat === c.id ? "border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-yellow-400/40" : "bg-card hover:border-primary text-foreground"
             )}
           >
             {c.emoji} {c.name} · {c.id === "all" ? products.length : products.filter((p) => p.categoryId === c.id).length}
           </button>
         ))}
       </div>
+
+      {/* Category Special Notes from Flyer */}
+      {cat === "c_chinese" && (
+        <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+          <span className="text-base">🥢</span>
+          <span>Chef's Note: <strong className="text-primary font-black">Shezwan and Garlic options available</strong> on all Fried Rice & Noodles!</span>
+        </div>
+      )}
+      {cat === "c_curry" && (
+        <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+          <span className="text-base">🍛</span>
+          <span>Signature Beef Tawa Curry served hot in <strong className="text-amber-600 dark:text-amber-400 font-black">Half (₹70)</strong> and <strong className="text-amber-600 dark:text-amber-400 font-black">Full (₹100)</strong> portions.</span>
+        </div>
+      )}
+      {cat === "c_chicken_tandoori" && (
+        <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2.5 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+          <span className="text-base">🔥</span>
+          <span>Fire-roasted Chicken Tandoori available in <strong className="text-primary font-black">Quarter, Half & Full</strong> sizes with Achari, Hariyali & Malai marinades.</span>
+        </div>
+      )}
 
       {/* Dish Grid */}
       {q.isLoading ? (

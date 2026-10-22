@@ -17,7 +17,7 @@ export const Route = createFileRoute("/invoice/$orderId")({
 
 function Invoice() {
   const { orderId } = Route.useParams();
-  const { orders } = usePos();
+  const { orders, tables } = usePos();
   const [phoneInput, setPhoneInput] = useState("");
 
   const o = orders.find((x) => x.id === orderId);
@@ -115,7 +115,7 @@ function Invoice() {
             {new Date(o.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
           </span>
           <span className="text-muted-foreground font-semibold">{o.tableId ? "Table" : "Order Type"}</span>
-          <span className="text-right font-bold">{o.tableId ? `Table ${o.tableId.replace(/^t/, "")}` : "Takeaway Counter"}</span>
+          <span className="text-right font-bold">{o.tableId ? (tables.find((t) => t.id === o.tableId)?.name ? `Table ${tables.find((t) => t.id === o.tableId)?.name}` : `Table ${o.tableId}`) : "Takeaway Counter"}</span>
           <span className="text-muted-foreground font-semibold">Customer</span>
           <span className="text-right font-medium">Walk-in Customer</span>
           <span className="text-muted-foreground font-semibold">Payment Status</span>

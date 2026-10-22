@@ -114,6 +114,16 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
       const { error: itemsError } = await supabase.from("order_items").insert(lineItems);
       if (itemsError) {
         console.error("Failed to sync order items to Supabase:", itemsError);
+        // Fallback: If foreign key on product_id failed, insert line items with product_id: null so items are never lost!
+        if (itemsError.code === "23503" || String(itemsError.message).includes("foreign key")) {
+          const fallbackItems = lineItems.map((li: any) => ({ ...li, product_id: null }));
+          const { error: fallbackErr } = await supabase.from("order_items").insert(fallbackItems);
+          if (fallbackErr) {
+            console.error("Failed fallback order items insert:", fallbackErr);
+          } else {
+            console.log("Successfully inserted order items with fallback");
+          }
+        }
       }
     }
 

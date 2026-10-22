@@ -3,7 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { 
   ClipboardList, CreditCard, LayoutDashboard, LogOut, Menu, 
   ShoppingBag, UtensilsCrossed, X, KeyRound, UserPlus, Trash2, 
-  ShieldCheck, User, Lock, Eye, EyeOff, Loader2, ChefHat, Edit3, Check 
+  ShieldCheck, User, Lock, Eye, EyeOff, Loader2, ChefHat, Edit3, Check,
+  LayoutGrid
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -16,6 +17,7 @@ import {
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pos", label: "New Order", icon: ShoppingBag },
+  { to: "/tables", label: "Tables", icon: LayoutGrid },
   { to: "/orders", label: "Orders", icon: ClipboardList },
   { to: "/menu", label: "Menu", icon: UtensilsCrossed },
   { to: "/payments", label: "Payments", icon: CreditCard },
@@ -270,6 +272,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="no-print fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t bg-card/95 backdrop-blur-md px-1 py-2 lg:hidden shadow-lg">
         {[
           { to: "/pos", label: "POS Bill", icon: ShoppingBag },
+          { to: "/tables", label: "Tables", icon: LayoutGrid },
           { to: "/orders", label: "Orders", icon: ClipboardList },
           { to: "/menu", label: "Menu", icon: UtensilsCrossed },
           { to: "/", label: "Home", icon: LayoutDashboard },

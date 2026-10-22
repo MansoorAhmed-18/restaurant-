@@ -26,7 +26,6 @@ export function Pos() {
   const cats = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
-  const [vegOnly, setVegOnly] = useState(false);
 
   const [custPhone, setCustPhone] = useState("");
 
@@ -40,10 +39,9 @@ export function Pos() {
     return pos.products.filter((p) => {
       const matchCat = cat === "all" || p.categoryId === cat;
       const matchQ = p.name.toLowerCase().includes(q.toLowerCase());
-      const matchVeg = vegOnly ? p.veg : true;
-      return matchCat && matchQ && matchVeg;
+      return matchCat && matchQ;
     });
-  }, [pos.products, cat, q, vegOnly]);
+  }, [pos.products, cat, q]);
 
   const qtyOf = (id: string) => pos.cart.find((c) => c.productId === id)?.qty ?? 0;
 
@@ -84,27 +82,15 @@ export function Pos() {
       <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
         {/* Main Menu Selection Panel */}
         <div className="min-w-0 space-y-4">
-          {/* Search & Veg Filter */}
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-              <input 
-                value={q} 
-                onChange={(e) => setQ(e.target.value)} 
-                placeholder="Search food items by name..." 
-                className="h-12 w-full rounded-2xl border bg-card pl-12 pr-4 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary" 
-              />
-            </div>
-            
-            <button
-              onClick={() => setVegOnly(!vegOnly)}
-              className={cn(
-                "h-12 shrink-0 flex items-center gap-2 rounded-2xl border px-4 text-xs font-extrabold transition-colors",
-                vegOnly ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "bg-card text-muted-foreground hover:border-primary"
-              )}
-            >
-              <span className="size-2.5 rounded-full bg-emerald-500"></span> Veg Only
-            </button>
+          {/* Search Bar */}
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              value={q} 
+              onChange={(e) => setQ(e.target.value)} 
+              placeholder="Search food items by name..." 
+              className="h-12 w-full rounded-2xl border bg-card pl-12 pr-4 text-sm font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary" 
+            />
           </div>
 
           {/* Categories Bar */}
@@ -128,6 +114,26 @@ export function Pos() {
               ))
             )}
           </div>
+
+          {/* Special Category Information from Flyer */}
+          {cat === "c_chinese" && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+              <span className="text-base">🥢</span>
+              <span><strong>Shezwan and Garlic options available</strong> on all Chinese Rice & Noodles.</span>
+            </div>
+          )}
+          {cat === "c_curry" && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3.5 py-2 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+              <span className="text-base">🍛</span>
+              <span>Beef Tawa Curry available in <strong>Half (₹70)</strong> & <strong>Full (₹100)</strong> portions.</span>
+            </div>
+          )}
+          {cat === "c_chicken_tandoori" && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-2 text-xs font-bold text-foreground flex items-center gap-2 animate-in fade-in">
+              <span className="text-base">🔥</span>
+              <span>Chicken Tandoori available in <strong>Qtr, Half & Full</strong> with Achari, Hariyali & Malai marinades.</span>
+            </div>
+          )}
 
           {/* Dish Grid */}
           <div>
@@ -192,8 +198,62 @@ export function Pos() {
             )}
           </div>
 
+          {/* Dine-in vs Takeaway and Table Selection */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1 border">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!pos.tableId && pos.tables.length > 0) {
+                    const firstAvail = pos.tables.find((t) => t.status === "available") || pos.tables[0];
+                    if (firstAvail) pos.setTableId(firstAvail.id);
+                  }
+                }}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5",
+                  pos.tableId ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                🍽️ Dine-in
+              </button>
+              <button
+                type="button"
+                onClick={() => pos.setTableId(undefined)}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5",
+                  !pos.tableId ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                🛍️ Takeaway
+              </button>
+            </div>
 
-
+            {pos.tableId && (
+              <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-muted-foreground">Table:</span>
+                  <select
+                    value={pos.tableId}
+                    onChange={(e) => pos.setTableId(e.target.value)}
+                    className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
+                  >
+                    {pos.tables.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => pos.setTableId(undefined)}
+                  className="text-[11px] text-muted-foreground hover:text-destructive font-bold underline"
+                >
+                  Clear Table
+                </button>
+              </div>
+            )}
+          </div>
 
           {pos.cart.length === 0 ? (
             <div className="py-10 text-center">
