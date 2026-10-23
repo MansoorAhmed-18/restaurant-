@@ -41,11 +41,13 @@ function MenuPage() {
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const imageVal = String(f.get("image") || "").trim();
     const data = {
       name: String(f.get("name")),
       price: Number(f.get("price")),
       categoryId: String(f.get("categoryId")),
       emoji: String(f.get("emoji") || "🍽️"),
+      image: imageVal || undefined,
       veg: f.get("veg") === "on",
     };
 
@@ -182,8 +184,19 @@ function MenuPage() {
           {filteredProducts.map((p) => (
             <div key={p.id} className="card-surface flex items-center justify-between gap-3 p-3.5 sm:p-4 hover:border-primary/40 transition-all shadow-sm">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="grid size-12 sm:size-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-2xl sm:text-3xl shadow-sm">
-                  {p.emoji}
+                <div className="relative size-12 sm:size-14 shrink-0 overflow-hidden rounded-2xl bg-primary/10 shadow-sm border border-border/50">
+                  {p.image ? (
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="h-full w-full object-cover rounded-2xl"
+                    />
+                  ) : (
+                    <div className="grid h-full place-items-center text-2xl sm:text-3xl">{p.emoji}</div>
+                  )}
+                  <span className="absolute bottom-0.5 right-0.5 rounded bg-black/60 px-1 py-0.5 text-[9px] text-white backdrop-blur-sm leading-none">
+                    {p.emoji}
+                  </span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -286,6 +299,10 @@ function MenuPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="image" className="text-xs font-extrabold uppercase text-muted-foreground">Image URL (Optional)</Label>
+                      <Input id="image" name="image" defaultValue={p?.image} placeholder="https://images.unsplash.com/..." className="mt-1 h-10 font-medium text-xs font-mono" />
                     </div>
                     <label className="flex items-center gap-2 text-xs font-bold pt-1 cursor-pointer">
                       <input type="checkbox" name="veg" defaultChecked={p?.veg ?? true} className="size-4 accent-emerald-600 rounded" />

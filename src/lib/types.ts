@@ -5,6 +5,7 @@ export interface Category { id: ID; name: string; emoji: string }
 export interface Product {
   id: ID; name: string; categoryId: ID; price: number; emoji: string;
   veg: boolean; available: boolean; description?: string | undefined; soldToday?: number | undefined;
+  image?: string | undefined;
 }
 export type TableStatus = "available" | "occupied" | "reserved";
 export interface RestaurantTable { id: ID; name: string; seats: number; status: TableStatus; orderId?: ID | undefined; reservedFor?: string | undefined }

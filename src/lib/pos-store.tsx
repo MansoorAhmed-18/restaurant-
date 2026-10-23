@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as mock from "./mock-data";
-import { supabase, syncOrderToSupabase, syncCustomerToSupabase, fetchOrdersFromSupabase, fetchProductsFromSupabase, isSupabaseConfigured } from "./supabase";
+import { 
+  supabase, syncOrderToSupabase, syncCustomerToSupabase, 
+  fetchOrdersFromSupabase, fetchProductsFromSupabase, fetchTablesFromSupabase,
+  syncTableToSupabase, syncAllTablesToSupabase, deleteTableFromSupabase,
+  isSupabaseConfigured 
+} from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 import { consolidateOrderItems } from "./utils";
 
@@ -30,7 +35,7 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 
-const CURRENT_MENU_VERSION = "meat_theory_v2_final";
+const CURRENT_MENU_VERSION = "meat_theory_v6_bespoke_local_photos";
 
 // Helper for initial localStorage loading
 const loadStored = <T,>(key: string, fallback: T): T => {
@@ -56,7 +61,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
   // Client-side hydration from localStorage after mount
   useEffect(() => {
-    setOrders(loadStored("res_pos_orders", []));
+    const rawStoredOrders = loadStored<Order[]>("res_pos_orders", []);
+    const cleanOrders = (rawStoredOrders || []).filter((o) => {
+      if (!o || !o.id) return false;
+      const isLegacyId = /^o10[3-9]\d|^o11[0-1]\d/.test(o.id);
+      const isOldDate = o.createdAt ? new Date(o.createdAt).getTime() < new Date("2026-10-22T17:00:00Z").getTime() : false;
+      const hasOldDishes = o.items?.some((it) =>
+        ["Paneer Tikka", "Butter Chicken", "Chicken 65", "Veg Spring Rolls", "Gulab Jamun", "Dal Makhani", "Rasmalai", "Mutton Dum Biryani", "Hyderabadi Chicken Biryani"].includes(it.name)
+      );
+      return !isLegacyId && !isOldDate && !hasOldDishes;
+    });
+    setOrders(cleanOrders);
     setTables(loadStored("res_pos_tables", mock.tables));
     
     // Check if stored products are from the old catalog or version is missing/outdated
@@ -107,7 +122,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
     }
   }, [customers]);
 
-  // Fetch live orders & subscribe to Supabase Realtime changes
+  // Fetch live orders, products, tables & subscribe to Supabase Realtime changes
   useEffect(() => {
     let isMounted = true;
 
@@ -117,9 +132,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
           if (isMounted && remoteOrders && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
             setOrders((localOrders) => {
               const map = new Map<string, Order>();
-              (localOrders || []).forEach((lo) => lo && lo.id && map.set(lo.id, lo));
+              (localOrders || []).forEach((lo) => {
+                if (lo && lo.id && !/^o10[3-9]\d|^o11[0-1]\d/.test(lo.id)) {
+                  map.set(lo.id, lo);
+                }
+              });
               remoteOrders.forEach((ro: Order) => {
-                if (!ro || !ro.id) return;
+                if (!ro || !ro.id || /^o10[3-9]\d|^o11[0-1]\d/.test(ro.id)) return;
                 const local = map.get(ro.id);
                 if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
                   const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
@@ -147,10 +166,33 @@ export function PosProvider({ children }: { children: ReactNode }) {
               setProducts((localProds) => {
                 const map = new Map<string, Product>();
                 (localProds || []).forEach((p) => p && p.id && map.set(p.id, p));
-                cleaned.forEach((rp: Product) => rp && rp.id && map.set(rp.id, rp));
+                cleaned.forEach((rp: Product) => {
+                  if (rp && rp.id) {
+                    const existing = map.get(rp.id);
+                    map.set(rp.id, {
+                      ...rp,
+                      image: rp.image || existing?.image || mock.getDefaultProductImage(rp),
+                    });
+                  }
+                });
                 return Array.from(map.values());
               });
             }
+          }
+        });
+
+        fetchTablesFromSupabase().then((remoteTables) => {
+          if (isMounted && remoteTables && Array.isArray(remoteTables) && remoteTables.length > 0) {
+            setTables((localTables) => {
+              const map = new Map<string, RestaurantTable>();
+              (localTables || []).forEach((t) => t && t.id && map.set(t.id, t));
+              remoteTables.forEach((rt: RestaurantTable) => {
+                if (rt && rt.id) {
+                  map.set(rt.id, rt);
+                }
+              });
+              return Array.from(map.values());
+            });
           }
         });
       }
@@ -168,6 +210,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
           loadData();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+          loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, () => {
           loadData();
         })
         .subscribe();
@@ -268,15 +313,16 @@ export function PosProvider({ children }: { children: ReactNode }) {
       };
       setOrders((os) => [o, ...os]);
       if (tableId) {
-        setTables((ts) =>
-          ts.map((t) =>
+        setTables((ts) => {
+          const updated = ts.map((t) =>
             t.id === tableId
-              ? isPaidDirectly
-                ? { ...t, status: "available", orderId: undefined }
-                : { ...t, status: "occupied", orderId: o.id }
+              ? { ...t, status: "occupied" as const, orderId: o.id }
               : t
-          )
-        );
+          );
+          const changed = updated.find((t) => t.id === tableId);
+          if (changed) syncTableToSupabase(changed);
+          return updated;
+        });
       }
       
       // Update customer total spent & visits if linked and paid directly
@@ -315,7 +361,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
         }
         return o;
       }));
-      setTables((ts) => ts.map((t) => (t.orderId === id ? { ...t, status: "available", orderId: undefined } : t)));
+      setTables((ts) => {
+        const ord = updatedOrder as Order | null;
+        const updated = ts.map((t) =>
+          (t.orderId === id || (ord?.tableId && t.id === ord.tableId))
+            ? { ...t, status: "available" as const, orderId: undefined }
+            : t
+        );
+        const freed = updated.filter((t) => t.orderId === id || (ord?.tableId && t.id === ord.tableId));
+        freed.forEach((ft) => syncTableToSupabase(ft));
+        return updated;
+      });
       
       // Update customer total spent & visits if linked
       if (updatedOrder) {

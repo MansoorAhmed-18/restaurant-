@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Users, Plus, Search, Trash2, Edit3, CheckCircle2, Clock, 
   ArrowRight, Utensils, Receipt, Calendar, X, Sparkles, RefreshCw, 
@@ -8,14 +8,18 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { usePos } from "@/lib/pos-store";
 import type { TableStatus, RestaurantTable, Order } from "@/lib/types";
 import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { inr } from "@/lib/api";
+import { syncTableToSupabase, syncAllTablesToSupabase, deleteTableFromSupabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/tables")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    tableId: typeof s["tableId"] === "string" ? s["tableId"] : undefined,
+  }),
   head: () => meta("Table Management", "Floor view of available, occupied and reserved tables with full details."),
   component: Tables,
 });
@@ -28,12 +32,19 @@ const ring: Record<TableStatus, string> = {
 
 function Tables() {
   const { tables, setTables, setTableId, orders } = usePos();
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<TableStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Table Details Sheet State
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(search.tableId ?? null);
+
+  useEffect(() => {
+    if (search.tableId) {
+      setSelectedTableId(search.tableId);
+    }
+  }, [search.tableId]);
 
   // Add Table Modal State
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -66,20 +77,25 @@ function Tables() {
 
   // Find active order linked to a table
   const getTableActiveOrder = (t?: RestaurantTable | null): Order | null => {
-    if (!t) return null;
+    if (!t || t.status === "available") return null;
     if (t.orderId) {
       const match = orders.find((o) => o.id === t.orderId);
-      if (match) return match;
+      if (match && match.status !== "cancelled") {
+        return match;
+      }
     }
-    return (
-      orders.find(
-        (o) =>
-          o.tableId === t.id &&
-          (o.status === "pending" || o.status === "preparing" || (o.paymentStatus === "unpaid" && o.status !== "cancelled"))
-      ) ||
-      orders.find((o) => o.tableId === t.id) ||
-      null
-    );
+    if (t.status === "occupied") {
+      const activeUnpaid = orders.find(
+        (o) => o.tableId === t.id && o.paymentStatus === "unpaid" && o.status !== "cancelled"
+      );
+      if (activeUnpaid) return activeUnpaid;
+
+      const latestOrder = orders.find(
+        (o) => o.tableId === t.id && o.status !== "cancelled"
+      );
+      if (latestOrder) return latestOrder;
+    }
+    return null;
   };
 
   // Find all past order history for this table
@@ -95,24 +111,41 @@ function Tables() {
   };
 
   const handleSetTableStatus = (id: string, newStatus: TableStatus) => {
+    let updatedTable: RestaurantTable | undefined;
     setTables((ts) =>
       ts.map((t) => {
         if (t.id === id) {
-          return {
+          updatedTable = {
             ...t,
             status: newStatus,
-            reservedFor: newStatus === "reserved" ? t.reservedFor : undefined,
+            reservedFor: newStatus === "reserved" ? (t.reservedFor || "Reserved for Guest") : undefined,
             orderId: newStatus === "available" ? undefined : t.orderId,
           };
+          return updatedTable;
         }
         return t;
       })
     );
+    if (updatedTable) {
+      syncTableToSupabase(updatedTable);
+    }
     toast.success(`Table status changed to ${newStatus}`);
   };
 
   const handleUpdateSeats = (id: string, seats: number) => {
-    setTables((ts) => ts.map((t) => (t.id === id ? { ...t, seats } : t)));
+    let updatedTable: RestaurantTable | undefined;
+    setTables((ts) =>
+      ts.map((t) => {
+        if (t.id === id) {
+          updatedTable = { ...t, seats };
+          return updatedTable;
+        }
+        return t;
+      })
+    );
+    if (updatedTable) {
+      syncTableToSupabase(updatedTable);
+    }
     toast.success(`Updated table capacity to ${seats} seats`);
   };
 
@@ -129,6 +162,7 @@ function Tables() {
       status: "available",
     };
     setTables((ts) => [...ts, newTable]);
+    syncTableToSupabase(newTable);
     toast.success(`Table ${newTable.name} (${newTable.seats} seats) added to floor plan!`);
     setNewTableName("");
     setNewTableSeats(4);
@@ -138,6 +172,7 @@ function Tables() {
   const handleDeleteTable = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to remove ${name} from floor plan?`)) return;
     setTables((ts) => ts.filter((t) => t.id !== id));
+    deleteTableFromSupabase(id);
     if (selectedTableId === id) setSelectedTableId(null);
     toast.success(`Table ${name} deleted`);
   };
@@ -150,13 +185,19 @@ function Tables() {
       return;
     }
     const resString = `${guestName.trim()}${reserveTime ? ` · ${reserveTime}` : ""}`;
+    let updatedTable: RestaurantTable | undefined;
     setTables((ts) =>
-      ts.map((t) =>
-        t.id === reserveModalTable.id
-          ? { ...t, status: "reserved", reservedFor: resString }
-          : t
-      )
+      ts.map((t) => {
+        if (t.id === reserveModalTable.id) {
+          updatedTable = { ...t, status: "reserved", reservedFor: resString };
+          return updatedTable;
+        }
+        return t;
+      })
     );
+    if (updatedTable) {
+      syncTableToSupabase(updatedTable);
+    }
     toast.success(`Table ${reserveModalTable.name} reserved for ${resString}`);
     setReserveModalTable(null);
     setGuestName("");
@@ -164,24 +205,33 @@ function Tables() {
   };
 
   const handleFreeTable = (id: string, name: string) => {
+    let updatedTable: RestaurantTable | undefined;
     setTables((ts) =>
-      ts.map((t) =>
-        t.id === id ? { ...t, status: "available", orderId: undefined, reservedFor: undefined } : t
-      )
+      ts.map((t) => {
+        if (t.id === id) {
+          updatedTable = { ...t, status: "available", orderId: undefined, reservedFor: undefined };
+          return updatedTable;
+        }
+        return t;
+      })
     );
+    if (updatedTable) {
+      syncTableToSupabase(updatedTable);
+    }
     toast.success(`Table ${name} is now available`);
   };
 
   const handleVacateAll = () => {
     if (!confirm("Are you sure you want to mark all tables as Available?")) return;
-    setTables((ts) =>
-      ts.map((t) => ({ ...t, status: "available", orderId: undefined, reservedFor: undefined }))
-    );
+    const updated = tables.map((t) => ({ ...t, status: "available" as const, orderId: undefined, reservedFor: undefined }));
+    setTables(() => updated);
+    syncAllTablesToSupabase(updated);
     toast.success("All tables marked as available");
   };
 
   const activeOrder = getTableActiveOrder(selectedTable);
   const orderHistory = getTableOrderHistory(selectedTable?.id);
+
 
   return (
     <AppShell>
@@ -511,6 +561,9 @@ function Tables() {
                   </div>
                   <StatusBadge status={selectedTable.status} />
                 </SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground mt-0.5 text-left">
+                  Floor table status, live orders, seating capacity, and history.
+                </SheetDescription>
               </SheetHeader>
 
               <div className="space-y-6 pt-5">
@@ -546,7 +599,11 @@ function Tables() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSetTableStatus(selectedTable.id, "reserved")}
+                      onClick={() => {
+                        setReserveModalTable(selectedTable);
+                        setGuestName(selectedTable.reservedFor ? selectedTable.reservedFor.split(" · ")[0] || "" : "");
+                        setReserveTime(selectedTable.reservedFor ? selectedTable.reservedFor.split(" · ")[1] || "" : "");
+                      }}
                       className={cn(
                         "py-2 px-2.5 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-1.5",
                         selectedTable.status === "reserved"
@@ -583,10 +640,17 @@ function Tables() {
                             </span>
                           </div>
 
-                          <div className="text-xs font-bold text-muted-foreground flex justify-between">
+                          <div className="text-xs font-bold text-muted-foreground flex justify-between items-center">
                             <span>Payment Status:</span>
-                            <span className="uppercase text-emerald-600 font-extrabold">
-                              {activeOrder.paymentStatus}
+                            <span className={cn(
+                              "uppercase font-black px-2 py-0.5 rounded-full text-[10px]",
+                              activeOrder.paymentStatus === "paid" 
+                                ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30" 
+                                : "bg-amber-500/15 text-amber-600 border border-amber-500/30 animate-pulse"
+                            )}>
+                              {activeOrder.paymentStatus === "paid" 
+                                ? `PAID (${activeOrder.paymentMethod?.toUpperCase() || "PAID"})` 
+                                : "UNPAID (Pay Later)"}
                             </span>
                           </div>
 
@@ -611,32 +675,71 @@ function Tables() {
 
                         {/* Action buttons for active order */}
                         <div className="grid grid-cols-2 gap-2 pt-2">
-                          <Link
-                            to="/invoice/$orderId"
-                            params={{ orderId: activeOrder.id }}
+                          <button
+                            type="button"
+                            onClick={() => handleStartOrder(selectedTable)}
                             className="flex items-center justify-center gap-1 rounded-xl bg-primary py-2.5 text-xs font-black text-white hover:opacity-90 shadow"
                           >
-                            <Receipt className="size-4" /> View Invoice
-                          </Link>
-                          <Link
-                            to="/payments"
-                            search={{ order: activeOrder.id }}
-                            className="flex items-center justify-center gap-1 rounded-xl border border-primary text-xs font-black text-primary hover:bg-primary/10"
+                            <Plus className="size-4" /> Add Food Items
+                          </button>
+                          {activeOrder.paymentStatus === "unpaid" ? (
+                            <Link
+                              to="/payments"
+                              search={{ order: activeOrder.id }}
+                              className="flex items-center justify-center gap-1 rounded-xl border-2 border-primary bg-primary/10 text-xs font-black text-primary hover:bg-primary hover:text-white transition-colors"
+                            >
+                              <CreditCard className="size-4" /> Collect Bill
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/invoice/$orderId"
+                              params={{ orderId: activeOrder.id }}
+                              className="flex items-center justify-center gap-1 rounded-xl border border-emerald-500 bg-emerald-500/10 text-xs font-black text-emerald-700 hover:bg-emerald-500 hover:text-white transition-colors"
+                            >
+                              <Receipt className="size-3.5" /> View Receipt
+                            </Link>
+                          )}
+                          {activeOrder.paymentStatus === "unpaid" && (
+                            <Link
+                              to="/invoice/$orderId"
+                              params={{ orderId: activeOrder.id }}
+                              className="flex items-center justify-center gap-1 rounded-xl border bg-card py-2 text-xs font-bold text-foreground hover:bg-muted"
+                            >
+                              <Receipt className="size-3.5" /> View Receipt
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleFreeTable(selectedTable.id, selectedTable.name)}
+                            className={cn(
+                              "flex items-center justify-center gap-1 rounded-xl border py-2 text-xs font-bold transition-colors",
+                              activeOrder.paymentStatus === "paid" 
+                                ? "col-span-1 border-primary/30 text-primary hover:bg-primary/10" 
+                                : "border-destructive/30 text-destructive hover:bg-destructive/10"
+                            )}
                           >
-                            <CreditCard className="size-4" /> Pay Bill
-                          </Link>
+                            <CheckCircle2 className="size-3.5" /> Vacate Table
+                          </button>
                         </div>
                       </>
                     ) : (
                       <div className="py-2 text-xs text-muted-foreground text-center">
-                        Guests are seated at {selectedTable.name}. No bill placed yet.
-                        <div className="mt-3">
+                        <div className="font-bold text-foreground mb-1">Guests are seated at {selectedTable.name}</div>
+                        <div>No active food order has been placed for this table yet.</div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={() => handleStartOrder(selectedTable)}
-                            className="w-full py-2.5 rounded-xl bg-primary text-xs font-black text-white shadow"
+                            className="py-2.5 rounded-xl bg-primary text-xs font-black text-white shadow hover:opacity-90 flex items-center justify-center gap-1"
                           >
-                            + Start Table Bill Now
+                            <Plus className="size-4" /> Start Table Bill
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFreeTable(selectedTable.id, selectedTable.name)}
+                            className="py-2.5 rounded-xl border bg-card text-xs font-bold text-muted-foreground hover:text-emerald-600 hover:border-emerald-500 transition-colors"
+                          >
+                            Mark Available
                           </button>
                         </div>
                       </div>
@@ -659,17 +762,22 @@ function Tables() {
                       <button
                         type="button"
                         onClick={() => {
-                          setTables((ts) => ts.map((x) => x.id === selectedTable.id ? { ...x, status: "occupied", reservedFor: undefined } : x));
+                          setTables((ts) => {
+                            const updated = ts.map((x) => x.id === selectedTable.id ? { ...x, status: "occupied" as const, reservedFor: undefined } : x);
+                            const changed = updated.find((x) => x.id === selectedTable.id);
+                            if (changed) syncTableToSupabase(changed);
+                            return updated;
+                          });
                           handleStartOrder(selectedTable);
                         }}
-                        className="py-2.5 rounded-xl bg-amber-500 text-xs font-black text-white hover:bg-amber-600 shadow"
+                        className="py-2.5 rounded-xl bg-amber-500 text-xs font-black text-white hover:bg-amber-600 shadow flex items-center justify-center gap-1"
                       >
-                        Seat Guest & Order
+                        <Utensils className="size-3.5" /> Seat & Start Bill
                       </button>
                       <button
                         type="button"
                         onClick={() => handleFreeTable(selectedTable.id, selectedTable.name)}
-                        className="py-2.5 rounded-xl border text-xs font-bold text-muted-foreground hover:text-destructive"
+                        className="py-2.5 rounded-xl border text-xs font-bold text-muted-foreground hover:text-destructive transition-colors"
                       >
                         Cancel Booking
                       </button>
@@ -689,9 +797,9 @@ function Tables() {
                       <button
                         type="button"
                         onClick={() => handleStartOrder(selectedTable)}
-                        className="py-2.5 rounded-xl bg-primary text-xs font-black text-white shadow hover:opacity-90"
+                        className="py-2.5 rounded-xl bg-primary text-xs font-black text-white shadow hover:opacity-90 flex items-center justify-center gap-1"
                       >
-                        Start Order
+                        <Utensils className="size-3.5" /> Start Bill
                       </button>
                       <button
                         type="button"

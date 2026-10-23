@@ -13,7 +13,47 @@ export const categories: Category[] = [
   { id: "c_chinese", name: "Chinese", emoji: "🥢" },
 ];
 
-export const products: Product[] = [
+export const FOOD_IMAGES = {
+  beefCurry: "/images/beef_tawa_curry.jpg",
+  beefTikkaAchari: "/images/beef_tikka.jpg",
+  hariyaliTikka: "/images/beef_tikka.jpg",
+  malaiTikka: "/images/chicken_tikka.jpg",
+  afghaniTikka: "/images/chicken_tikka.jpg",
+  mixedTikka: "/images/beef_tikka.jpg",
+  chickenSeekhRoll: "/images/seekh_roll.jpg",
+  rumaliRoti: "/images/rumali_roti.jpg",
+  sirloinSteak: "/images/beef_steak.jpg",
+  tandooriChicken: "/images/tandoori_chicken.jpg",
+  friedRice: "/images/beef_fried_rice.jpg",
+  friedNoodles: "/images/fried_noodles.jpg",
+  chillyDish: "/images/chilly_dish.jpg",
+};
+
+export function getDefaultProductImage(p: { id?: string | undefined; name?: string | undefined; categoryId?: string | undefined; image?: string | undefined }): string {
+  if (p.image) return p.image;
+  const name = (p.name || "").toLowerCase();
+  const cat = (p.categoryId || "").toLowerCase();
+
+  if (name.includes("rumali") || name.includes("roti")) return FOOD_IMAGES.rumaliRoti;
+  if (name.includes("roll") || name.includes("role") || name.includes("seekh")) return FOOD_IMAGES.chickenSeekhRoll;
+  if (name.includes("hariyali")) return FOOD_IMAGES.hariyaliTikka;
+  if (name.includes("malai")) return FOOD_IMAGES.malaiTikka;
+  if (name.includes("afghani")) return FOOD_IMAGES.afghaniTikka;
+  if (name.includes("mixed")) return FOOD_IMAGES.mixedTikka;
+  if (name.includes("noodle")) return FOOD_IMAGES.friedNoodles;
+  if (name.includes("rice")) return FOOD_IMAGES.friedRice;
+  if (name.includes("chilly") || name.includes("pan fry")) return FOOD_IMAGES.chillyDish;
+  if (name.includes("curry") || name.includes("kadai")) return FOOD_IMAGES.beefCurry;
+  if (name.includes("steak") || name.includes("sirloin") || name.includes("ribeye") || name.includes("t-bone") || name.includes("tomahawk")) return FOOD_IMAGES.sirloinSteak;
+  if (name.includes("tandoori")) return FOOD_IMAGES.tandooriChicken;
+  if (name.includes("tikka") || cat.includes("tikka")) return FOOD_IMAGES.beefTikkaAchari;
+  if (cat.includes("curry")) return FOOD_IMAGES.beefCurry;
+  if (cat.includes("steak")) return FOOD_IMAGES.sirloinSteak;
+  if (cat.includes("chinese")) return FOOD_IMAGES.friedRice;
+  return FOOD_IMAGES.beefCurry;
+}
+
+const rawProducts: Product[] = [
   // --- BEEF TAWA CURRY (70 / 100) ---
   {
     id: "p_curry_half",
@@ -493,7 +533,12 @@ export const products: Product[] = [
   },
 ];
 
-const statuses = ["available", "available", "occupied", "available", "available", "reserved", "available", "available", "occupied", "available", "available", "available"] as const;
+export const products: Product[] = rawProducts.map((p) => ({
+  ...p,
+  image: getDefaultProductImage(p),
+}));
+
+const statuses = ["available", "available", "available", "available", "available", "reserved", "available", "available", "occupied", "available", "available", "available"] as const;
 const seatCounts = [2, 4, 4, 6, 2, 4, 8, 4, 2, 6, 4, 2] as const;
 
 export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
@@ -504,6 +549,7 @@ export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
     name: `T${String(i + 1).padStart(2, "0")}`,
     seats,
     status,
+    orderId: undefined,
     reservedFor: status === "reserved" ? "Zubair · 8:30 PM" : undefined,
   };
 });

@@ -77,7 +77,20 @@ function Orders() {
                         <span>{dt.time}</span>
                       </div>
                     </td>
-                    <td className="p-4 font-semibold">{o.tableId ? (tables.find((tbl) => tbl.id === o.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === o.tableId)?.name}` : `Table ${o.tableId}`) : "Takeaway"}</td>
+                    <td className="p-4 font-semibold">
+                      {o.tableId ? (
+                        <Link 
+                          to="/tables" 
+                          search={{ tableId: o.tableId }} 
+                          className="text-primary hover:underline font-bold"
+                          title="View Table Details"
+                        >
+                          {tables.find((tbl) => tbl.id === o.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === o.tableId)?.name}` : `Table ${o.tableId}`}
+                        </Link>
+                      ) : (
+                        "Takeaway"
+                      )}
+                    </td>
                     <td className="p-4">{consolidateOrderItems(o.items).reduce((s, i) => s + i.qty, 0)} items</td>
                     <td className="p-4 font-black text-foreground">{inr(o.total)}</td>
                     <td className="p-4"><StatusBadge status={o.status} /></td>
@@ -128,8 +141,20 @@ function Orders() {
                     )}
                   </div>
 
-                  <div className="flex gap-2"><StatusBadge status={sel.status} /><StatusBadge status={sel.paymentStatus} /></div>
-                  <div className="text-sm text-muted-foreground">{sel.tableId ? (tables.find((tbl) => tbl.id === sel.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === sel.tableId)?.name}` : `Table ${sel.tableId}`) : "Takeaway"} · Walk-in Guest</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    {sel.tableId ? (
+                      <Link 
+                        to="/tables" 
+                        search={{ tableId: sel.tableId }} 
+                        className="text-primary hover:underline font-bold"
+                      >
+                        {tables.find((tbl) => tbl.id === sel.tableId)?.name ? `Table ${tables.find((tbl) => tbl.id === sel.tableId)?.name}` : `Table ${sel.tableId}`}
+                      </Link>
+                    ) : (
+                      "Takeaway"
+                    )}
+                    <span>· Walk-in Guest</span>
+                  </div>
                   <ul className="space-y-2 border-y py-3 text-sm">
                     {consolidateOrderItems(sel.items).map((i, idx) => <li key={`${i.productId || i.name}-${idx}`} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
                   </ul>

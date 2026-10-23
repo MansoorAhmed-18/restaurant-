@@ -336,6 +336,113 @@ export async function fetchCategoriesFromSupabase() {
 }
 
 /**
+ * Fetch restaurant tables from Supabase database
+ */
+export async function fetchTablesFromSupabase() {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from("restaurant_tables")
+      .select("*")
+      .order("id");
+
+    if (error || !data) {
+      console.error("Error fetching restaurant tables from Supabase:", error);
+      return null;
+    }
+
+    return data.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      seats: Number(t.seats || 4),
+      status: (t.status as "available" | "occupied" | "reserved") || "available",
+      orderId: t.order_id || undefined,
+      reservedFor: t.reserved_for || undefined,
+    }));
+  } catch (err) {
+    console.error("Fetch tables exception:", err);
+    return null;
+  }
+}
+
+/**
+ * Sync single restaurant table status & details to Supabase database
+ */
+export async function syncTableToSupabase(table: any) {
+  if (!supabase || !table?.id) return false;
+  try {
+    const { error } = await supabase.from("restaurant_tables").upsert(
+      {
+        id: table.id,
+        name: table.name,
+        seats: Number(table.seats || 4),
+        status: table.status || "available",
+        order_id: table.orderId || null,
+        reserved_for: table.reservedFor || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.error("Failed to sync table to Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Supabase table sync exception:", err);
+    return false;
+  }
+}
+
+/**
+ * Bulk sync all restaurant tables to Supabase
+ */
+export async function syncAllTablesToSupabase(tables: any[]) {
+  if (!supabase || !Array.isArray(tables) || tables.length === 0) return false;
+  try {
+    const payload = tables.map((t) => ({
+      id: t.id,
+      name: t.name,
+      seats: Number(t.seats || 4),
+      status: t.status || "available",
+      order_id: t.orderId || null,
+      reserved_for: t.reservedFor || null,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from("restaurant_tables").upsert(payload, { onConflict: "id" });
+    if (error) {
+      console.error("Bulk table sync failed:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Bulk table sync exception:", err);
+    return false;
+  }
+}
+
+/**
+ * Delete a restaurant table from Supabase database
+ */
+export async function deleteTableFromSupabase(tableId: string) {
+  if (!supabase || !tableId) return false;
+  try {
+    const { error } = await supabase.from("restaurant_tables").delete().eq("id", tableId);
+    if (error) {
+      console.error("Failed to delete table from Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Delete table exception:", err);
+    return false;
+  }
+}
+
+
+/**
  * Fetch all registered staff & cashier accounts from Supabase database
  * Uses dedicated table with automatic fallback to existing database tables
  */

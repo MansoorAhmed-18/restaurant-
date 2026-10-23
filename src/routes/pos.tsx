@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { 
@@ -33,7 +33,6 @@ export function Pos() {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("upi");
   const [cashTendered, setCashTendered] = useState<string>("");
-  const [sendWhatsAppOnPay, setSendWhatsAppOnPay] = useState(true);
 
   const items = useMemo(() => {
     return pos.products.filter((p) => {
@@ -56,15 +55,13 @@ export function Pos() {
     }
   };
 
-  const handleCompletePayment = (shouldSendWhatsApp: boolean = false) => {
+  const handleCompletePayment = () => {
     const o = pos.placeOrder(selectedMethod);
     if (!o) return;
     toast.success(`Bill #${o.number} paid via ${selectedMethod.toUpperCase()}!`);
     setPayModalOpen(false);
 
-    if (shouldSendWhatsApp || sendWhatsAppOnPay) {
-      sendWhatsAppBill(o, custPhone);
-    }
+    sendWhatsAppBill(o, custPhone);
 
     nav({ to: "/invoice/$orderId", params: { orderId: o.id } });
   };
@@ -157,7 +154,20 @@ export function Pos() {
                       </div>
 
                       <div className="relative w-24 shrink-0">
-                        <div className="grid h-20 place-items-center rounded-2xl bg-primary-soft text-4xl">{p.emoji}</div>
+                        <div className="relative h-20 w-24 overflow-hidden rounded-2xl bg-primary-soft shadow-inner border border-border/50">
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                            />
+                          ) : (
+                            <div className="grid h-full place-items-center text-4xl">{p.emoji}</div>
+                          )}
+                          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1 py-0.5 text-[10px] text-white backdrop-blur-sm leading-none">
+                            {p.emoji}
+                          </span>
+                        </div>
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
                           {qty === 0 ? (
                             <button 
@@ -228,31 +238,57 @@ export function Pos() {
               </button>
             </div>
 
-            {pos.tableId && (
-              <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-muted-foreground">Table:</span>
-                  <select
-                    value={pos.tableId}
-                    onChange={(e) => pos.setTableId(e.target.value)}
-                    className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
-                  >
-                    {pos.tables.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
-                      </option>
-                    ))}
-                  </select>
+            {pos.tableId && (() => {
+              const curTable = pos.tables.find((t) => t.id === pos.tableId);
+              const curActiveOrder = curTable 
+                ? pos.orders.find((o) => o.tableId === curTable.id && o.paymentStatus === "unpaid" && o.status !== "cancelled")
+                : null;
+              return (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-muted-foreground">Table:</span>
+                      <select
+                        value={pos.tableId}
+                        onChange={(e) => pos.setTableId(e.target.value)}
+                        className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
+                      >
+                        {pos.tables.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/tables"
+                        search={{ tableId: pos.tableId }}
+                        className="text-[11px] text-primary hover:underline font-bold"
+                      >
+                        Table Details 🪑
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => pos.setTableId(undefined)}
+                        className="text-[11px] text-muted-foreground hover:text-destructive font-bold underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  {curActiveOrder && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] font-bold text-primary flex items-center justify-between">
+                      <span>Dining in progress: Bill #{curActiveOrder.number} ({curActiveOrder.items.length} items)</span>
+                      <Link to="/invoice/$orderId" params={{ orderId: curActiveOrder.id }} className="underline">
+                        View
+                      </Link>
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => pos.setTableId(undefined)}
-                  className="text-[11px] text-muted-foreground hover:text-destructive font-bold underline"
-                >
-                  Clear Table
-                </button>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {pos.cart.length === 0 ? (
@@ -403,20 +439,13 @@ export function Pos() {
               />
             </div>
 
-            {/* Confirm Payment Buttons */}
-            <div className="space-y-2">
+            {/* Confirm Payment Button (Always redirects to WhatsApp) */}
+            <div>
               <button
-                onClick={() => handleCompletePayment(true)}
-                className="w-full h-11 rounded-xl bg-emerald-600 text-xs font-extrabold text-white shadow hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                onClick={handleCompletePayment}
+                className="w-full h-12 rounded-xl bg-emerald-600 text-sm font-black text-white shadow hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
               >
                 <MessageSquare className="size-4 text-emerald-200" /> Pay ({selectedMethod.toUpperCase()}) & Send WhatsApp Bill 💬
-              </button>
-
-              <button
-                onClick={() => handleCompletePayment(false)}
-                className="w-full h-10 rounded-xl border bg-card text-xs font-bold text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="size-4 text-emerald-600" /> Record Payment Only
               </button>
             </div>
           </div>

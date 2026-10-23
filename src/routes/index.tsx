@@ -531,6 +531,7 @@ export function Dashboard() {
               <Link
                 key={t.id}
                 to="/tables"
+                search={{ tableId: t.id }}
                 className={cn(
                   "rounded-xl border p-2 text-center transition-all hover:scale-105 shadow-sm",
                   t.status === "available" && "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500",
