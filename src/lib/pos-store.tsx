@@ -625,10 +625,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const subtotal = consolidatedItems.reduce((s, i) => s + i.price * i.qty, 0);
       const tax = 0;
       const total = subtotal + tax;
-      const freshOrders = orders.filter((o) => typeof o.number === "number" && o.number < 1000);
+      const allKnownOrders = (latestOrdersRef.current && latestOrdersRef.current.length > 0 ? latestOrdersRef.current : orders);
+      const freshOrders = allKnownOrders.filter((o) => typeof o.number === "number" && o.number < 1000);
       const number = freshOrders.length > 0 ? Math.max(...freshOrders.map((o) => o.number)) + 1 : 1;
+      const uniqueSuffix = Date.now().toString(36).slice(-4);
       const o: Order = {
-        id: `o${number}`,
+        id: `o${number}_${uniqueSuffix}`,
         number,
         items: consolidatedItems,
         subtotal,

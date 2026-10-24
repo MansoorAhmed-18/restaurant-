@@ -75,10 +75,11 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
   if (!supabase) return false;
 
   try {
-    const { error: orderError } = await supabase.from("orders").upsert(
+    let activeNumber = order.number;
+    let orderResult = await supabase.from("orders").upsert(
       {
         id: order.id,
-        number: order.number,
+        number: activeNumber,
         table_id: order.tableId || null,
         customer_id: order.customerId || null,
         subtotal: order.subtotal,
@@ -93,8 +94,34 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
       { onConflict: "id" }
     );
 
-    if (orderError) {
-      console.error("Failed to sync order to Supabase:", orderError);
+    // Concurrency collision handler: if two devices submit at the exact same millisecond
+    if (orderResult.error && (orderResult.error.code === "23505" || String(orderResult.error.message).includes("unique"))) {
+      console.warn("Order number collision detected across concurrent users, auto-resolving next available number...");
+      const { data: maxRow } = await supabase.from("orders").select("number").order("number", { ascending: false }).limit(1);
+      const nextAvailable = maxRow && maxRow[0]?.number ? Number(maxRow[0].number) + 1 : (Number(activeNumber) + 1);
+      activeNumber = nextAvailable;
+      order.number = nextAvailable;
+      orderResult = await supabase.from("orders").upsert(
+        {
+          id: order.id,
+          number: activeNumber,
+          table_id: order.tableId || null,
+          customer_id: order.customerId || null,
+          subtotal: order.subtotal,
+          tax: order.tax,
+          total: order.total,
+          status: order.status,
+          payment_status: order.paymentStatus,
+          payment_method: order.paymentMethod || null,
+          order_type: order.type || "dine-in",
+          created_at: order.createdAt || new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+    }
+
+    if (orderResult.error) {
+      console.error("Failed to sync order to Supabase:", orderResult.error);
       return false;
     }
 
