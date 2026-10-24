@@ -32,7 +32,7 @@ const ring: Record<TableStatus, string> = {
 };
 
 function Tables() {
-  const { tables, setTables, setTableId, orders } = usePos();
+  const { tables, setTables, setTableId, orders, removeItemFromRunningOrder } = usePos();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const activeStaff = getActiveStaff();
@@ -663,12 +663,42 @@ function Tables() {
 
                           {/* Line Items List */}
                           <div className="border-t border-dashed pt-2">
-                            <span className="text-[11px] font-extrabold text-muted-foreground uppercase">Ordered Items ({activeOrder.items.length})</span>
-                            <ul className="mt-1.5 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-extrabold text-muted-foreground uppercase">
+                                Ordered Items ({activeOrder.items.length})
+                              </span>
+                              {activeOrder.paymentStatus === "unpaid" && activeOrder.status !== "cancelled" && (
+                                <span className="text-[10px] text-primary font-bold">Tap 🗑️ to remove/swap dish</span>
+                              )}
+                            </div>
+                            <ul className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
                               {consolidateOrderItems(activeOrder.items).map((item, idx) => (
-                                <li key={idx} className="flex justify-between items-center text-xs">
-                                  <span className="font-medium">{item.qty} × {item.name}</span>
-                                  <span className="font-black font-mono">{inr(item.price * item.qty)}</span>
+                                <li key={idx} className="flex justify-between items-center text-xs p-1.5 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="font-extrabold text-foreground">{item.qty} × {item.name}</span>
+                                    {item.isAddon && (
+                                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-600">
+                                        Add-on
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="font-black font-mono text-primary">{inr(item.price * item.qty)}</span>
+                                    {activeOrder.paymentStatus === "unpaid" && activeOrder.status !== "cancelled" && (
+                                      <button
+                                        type="button"
+                                        title={`Remove ${item.name} from running order`}
+                                        onClick={() => {
+                                          if (window.confirm(`Remove ${item.name} from Bill #${activeOrder.number}?`)) {
+                                            removeItemFromRunningOrder(activeOrder.id, idx);
+                                          }
+                                        }}
+                                        className="size-6 rounded-md bg-destructive/10 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </li>
                               ))}
                             </ul>

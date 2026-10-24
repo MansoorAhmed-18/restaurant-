@@ -125,10 +125,10 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
       return false;
     }
 
-    // Insert order line items (delete existing items for this order first to avoid double counting)
-    if (order.items && order.items.length > 0) {
-      await supabase.from("order_items").delete().eq("order_id", order.id);
+    // Clean existing items for this order first so deleted items are removed
+    await supabase.from("order_items").delete().eq("order_id", order.id);
 
+    if (order.items && order.items.length > 0) {
       const consolidatedItems = consolidateOrderItems(order.items);
       const lineItems = consolidatedItems.map((item: any) => ({
         order_id: order.id,

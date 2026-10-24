@@ -176,6 +176,7 @@ interface Store {
   payOrder: (id: string, method: PaymentMethod) => void;
   setOrderStatus: (id: string, s: OrderStatus) => void;
   setTables: (fn: (t: RestaurantTable[]) => RestaurantTable[]) => void;
+  removeItemFromRunningOrder: (orderId: string, itemIndex: number) => boolean;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -759,6 +760,82 @@ export function PosProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     })),
+    removeItemFromRunningOrder: (orderId: string, itemIndex: number) => {
+      let orderToSync: Order | null = null;
+      let tableToFree: string | undefined = undefined;
+      let removedName = "";
+
+      setOrders((os) => {
+        return os.map((o) => {
+          if (o.id !== orderId) return o;
+          if (o.paymentStatus === "paid" || o.status === "cancelled") {
+            toast.error("Cannot modify settled or cancelled orders.");
+            return o;
+          }
+
+          const currentItems = consolidateOrderItems(o.items || []);
+          if (itemIndex < 0 || itemIndex >= currentItems.length) return o;
+
+          const targetItem = currentItems[itemIndex];
+          removedName = targetItem.name;
+
+          const newItems = currentItems.filter((_, idx) => idx !== itemIndex);
+
+          const subtotal = newItems.reduce((s, i) => s + i.price * i.qty, 0);
+          const tax = 0;
+          const total = subtotal + tax;
+
+          if (newItems.length === 0) {
+            // All items were removed -> Cancel the order and vacate the table
+            const cancelledOrder: Order = {
+              ...o,
+              items: [],
+              subtotal: 0,
+              tax: 0,
+              total: 0,
+              status: "cancelled",
+            };
+            orderToSync = cancelledOrder;
+            tableToFree = o.tableId;
+            return cancelledOrder;
+          }
+
+          const updated: Order = {
+            ...o,
+            items: newItems,
+            subtotal,
+            tax,
+            total,
+          };
+          orderToSync = updated;
+          return updated;
+        });
+      });
+
+      if (orderToSync) {
+        syncOrderToSupabase(orderToSync);
+        if ((orderToSync as Order).status === "cancelled") {
+          toast.success(`Removed ${removedName}. All dishes removed from Bill #${(orderToSync as Order).number}, table vacated.`);
+        } else {
+          toast.success(`Removed ${removedName} from Bill #${(orderToSync as Order).number}. Total updated to ${inr((orderToSync as Order).total)}.`);
+        }
+      }
+
+      if (tableToFree) {
+        setTables((ts) => {
+          const updatedTables = ts.map((t) =>
+            t.id === tableToFree
+              ? { ...t, status: "available" as const, orderId: undefined }
+              : t
+          );
+          const freed = updatedTables.filter((t) => t.id === tableToFree);
+          freed.forEach((ft) => syncTableToSupabase(ft));
+          return updatedTables;
+        });
+      }
+
+      return Boolean(orderToSync);
+    },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

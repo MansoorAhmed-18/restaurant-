@@ -348,15 +348,48 @@ export function Pos() {
                 </div>
 
                 {curActiveOrder && (
-                  <div className="rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary space-y-1">
+                  <div className="rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary space-y-2">
                     <div className="flex items-center justify-between font-black">
                       <span>Running Bill #{curActiveOrder.number} ({curActiveOrder.items.length} dishes · {inr(curActiveOrder.total)})</span>
-                      <Link to="/invoice/$orderId" params={{ orderId: curActiveOrder.id }} className="underline">
-                        View
+                      <Link to="/invoice/$orderId" params={{ orderId: curActiveOrder.id }} className="underline font-bold text-[11px]">
+                        Full Bill 🧾
                       </Link>
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-semibold">
-                      New dishes added will be merged into this same bill.
+
+                    {/* Running items list with remove button */}
+                    <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5 divide-y divide-primary/10">
+                      {curActiveOrder.items.map((item, idx) => (
+                        <div key={`${item.productId || item.name}-${idx}`} className="flex items-center justify-between pt-1 text-[11px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-bold shrink-0 text-foreground">{item.qty}×</span>
+                            <span className="truncate font-semibold text-foreground">{item.name}</span>
+                            {item.isAddon && (
+                              <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                                Add-on
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="font-mono font-bold text-foreground">{inr(item.price * item.qty)}</span>
+                            <button
+                              type="button"
+                              title={`Remove ${item.name} from running bill`}
+                              onClick={() => {
+                                if (window.confirm(`Remove ${item.name} from Bill #${curActiveOrder.number}?`)) {
+                                  pos.removeItemFromRunningOrder(curActiveOrder.id, idx);
+                                }
+                              }}
+                              className="size-5 rounded bg-destructive/15 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                            >
+                              <Trash2 className="size-2.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-[10px] text-muted-foreground font-semibold border-t border-primary/15 pt-1">
+                      💡 Tap 🗑️ to remove a dish, then pick replacement dishes below.
                     </div>
                   </div>
                 )}

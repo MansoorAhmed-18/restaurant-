@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquare, Calendar, Clock, CheckCircle2, Lock, XCircle, Bell, Volume2, VolumeX, Flame } from "lucide-react";
+import { MessageSquare, Calendar, Clock, CheckCircle2, Lock, XCircle, Bell, Volume2, VolumeX, Flame, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
@@ -33,7 +33,7 @@ function formatOrderDateTime(isoString?: string) {
 }
 
 function Orders() {
-  const { orders, setOrderStatus, tables } = usePos();
+  const { orders, setOrderStatus, tables, removeItemFromRunningOrder } = usePos();
   const [tab, setTab] = useState("active");
   const [openId, setOpenId] = useState<string | null>(null);
   const [soundMuted, setSoundMuted] = useState(isKitchenSoundMuted());
@@ -288,9 +288,25 @@ function Orders() {
                               )}
                             </div>
                           </div>
-                          <span className={cn("shrink-0", isNew ? "font-black text-amber-950 dark:text-amber-100" : "font-semibold text-foreground")}>
-                            {inr(i.qty * i.price)}
-                          </span>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className={cn(isNew ? "font-black text-amber-950 dark:text-amber-100 font-mono" : "font-semibold text-foreground font-mono")}>
+                              {inr(i.qty * i.price)}
+                            </span>
+                            {sel.paymentStatus === "unpaid" && sel.status !== "cancelled" && (
+                              <button
+                                type="button"
+                                title={`Remove ${i.name} from running bill`}
+                                onClick={() => {
+                                  if (window.confirm(`Remove ${i.name} from Bill #${sel.number}?`)) {
+                                    removeItemFromRunningOrder(sel.id, idx);
+                                  }
+                                }}
+                                className="size-6 rounded-md bg-destructive/10 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            )}
+                          </div>
                         </li>
                       );
                     })}
