@@ -553,7 +553,22 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     setOrderStatus: (id, s) => setOrders((os) => os.map((o) => {
       const updated = o.id === id ? { ...o, status: s } : o;
-      if (o.id === id) syncOrderToSupabase(updated);
+      if (o.id === id) {
+        syncOrderToSupabase(updated);
+        // If order was cancelled, immediately free any linked occupied table
+        if (s === "cancelled" && updated.tableId) {
+          setTables((ts) => {
+            const updatedTables = ts.map((t) =>
+              t.id === updated.tableId && t.orderId === id
+                ? { ...t, status: "available" as const, orderId: undefined }
+                : t
+            );
+            const freed = updatedTables.filter((t) => t.id === updated.tableId);
+            freed.forEach((ft) => syncTableToSupabase(ft));
+            return updatedTables;
+          });
+        }
+      }
       return updated;
     })),
   };

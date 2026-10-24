@@ -216,6 +216,13 @@ WHERE payment_status = 'paid'
 GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at), TO_CHAR(created_at, 'Month YYYY')
 ORDER BY sales_year DESC, month_number DESC;
 
+-- View 9: Power BI Paid & Settled Orders (Excludes Live/Unpaid Table Orders)
+-- Connect Power BI directly to this view or use DAX filter: orders[payment_status] = "paid"
+CREATE OR REPLACE VIEW public.v_powerbi_settled_orders AS
+SELECT * 
+FROM public.orders
+WHERE payment_status = 'paid' AND status <> 'cancelled';
+
 -- Row Level Security (RLS) policies - enable public access for anon key (can be customized)
 ALTER TABLE public.restaurant_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;

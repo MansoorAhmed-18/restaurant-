@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquare, Calendar, Clock, CheckCircle2 } from "lucide-react";
+import { MessageSquare, Calendar, Clock, CheckCircle2, Lock, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,6 +10,7 @@ import { usePos } from "@/lib/pos-store";
 import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
+import { getActiveStaff, isManager } from "@/lib/auth";
 
 export const Route = createFileRoute("/orders")({
   head: () => meta("Orders", "Active, completed and cancelled restaurant orders with details."),
@@ -33,6 +35,20 @@ function Orders() {
   const { orders, setOrderStatus, tables } = usePos();
   const [tab, setTab] = useState("active");
   const [openId, setOpenId] = useState<string | null>(null);
+  const activeStaff = getActiveStaff();
+  const isUserMgr = isManager(activeStaff);
+
+  const handleCancelOrder = (orderId: string, orderNumber: number) => {
+    if (!isManager()) {
+      toast.error("Access Denied: Only Manager can cancel restaurant orders.");
+      return;
+    }
+    if (!confirm(`Are you sure you want to cancel Bill #${orderNumber}? This will free the table and void this order.`)) {
+      return;
+    }
+    setOrderStatus(orderId, "cancelled");
+    toast.success(`Bill #${orderNumber} cancelled by Manager (${activeStaff?.name || "Manager"}).`);
+  };
   const t = tabs.find((x) => x.id === tab)!;
   const list = orders.filter((o) => t.match(o.status));
   const sel = orders.find((o) => o.id === openId);
@@ -181,7 +197,21 @@ function Orders() {
                         </button>
                       </div>
                     )}
-                    {(sel.status === "pending" || sel.status === "preparing") && <button onClick={() => setOrderStatus(sel.id, "cancelled")} className="h-10 rounded-xl bg-danger-soft text-sm font-bold text-destructive">Cancel order</button>}
+                    {(sel.status === "pending" || sel.status === "preparing") && (
+                      isUserMgr ? (
+                        <button 
+                          onClick={() => handleCancelOrder(sel.id, sel.number)} 
+                          className="h-10 rounded-xl bg-danger-soft text-sm font-bold text-destructive hover:bg-destructive hover:text-white transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <XCircle className="size-4" /> Cancel Order (Manager Only)
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-border/80 bg-muted/40 text-xs font-semibold text-muted-foreground">
+                          <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                          <span>Order cancellation is restricted to Managers</span>
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
               </>

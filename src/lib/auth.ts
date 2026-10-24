@@ -326,3 +326,8 @@ export function getStaffInitials(name: string): string {
   }
   return name.slice(0, 2).toUpperCase();
 }
+
+export function isManager(staff?: StaffUser | null): boolean {
+  const current = staff ?? getActiveStaff();
+  return Boolean(current && current.role?.toLowerCase() === "manager");
+}

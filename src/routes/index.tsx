@@ -79,6 +79,15 @@ export function Dashboard() {
     return safeOrders.filter((o) => o && o.status !== "cancelled");
   }, [safeOrders]);
 
+  // Realized / collected sales: only paid orders are sales! (Live unpaid orders excluded)
+  const paidOrders = useMemo(() => {
+    return validOrders.filter((o) => (o.paymentStatus === "paid" || o.status === "completed") && o.status !== "cancelled");
+  }, [validOrders]);
+
+  const liveOrders = useMemo(() => {
+    return validOrders.filter((o) => o.paymentStatus === "unpaid" && o.status !== "cancelled");
+  }, [validOrders]);
+
   const pendingOrders = useMemo(() => {
     return safeOrders.filter((o) => o && (o.status === "pending" || o.status === "preparing"));
   }, [safeOrders]);
@@ -93,26 +102,41 @@ export function Dashboard() {
     return validOrders.filter((o) => isSameDate(o.createdAt, now));
   }, [validOrders, now]);
 
+  const todayPaidOrders = useMemo(() => {
+    return paidOrders.filter((o) => isSameDate(o.createdAt, now));
+  }, [paidOrders, now]);
+
+  const todayLiveOrders = useMemo(() => {
+    return liveOrders.filter((o) => isSameDate(o.createdAt, now));
+  }, [liveOrders, now]);
+
   const yesterdayOrders = useMemo(() => {
     return validOrders.filter((o) => isSameDate(o.createdAt, yesterdayDate));
   }, [validOrders, yesterdayDate]);
 
-  // EXACT Real Values synchronized with Orders section
+  const yesterdayPaidOrders = useMemo(() => {
+    return paidOrders.filter((o) => isSameDate(o.createdAt, yesterdayDate));
+  }, [paidOrders, yesterdayDate]);
+
+  // EXACT Real Sales: Realized from settled/paid bills only (Live orders excluded from today's sale)
   const todaySales = useMemo(() => {
-    return todayOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
-  }, [todayOrders]);
+    return todayPaidOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [todayPaidOrders]);
+
+  const todayLiveAmount = useMemo(() => {
+    return todayLiveOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [todayLiveOrders]);
 
   const todayOrdersCount = todayOrders.length;
-  const todayPaidOrdersCount = useMemo(() => {
-    return todayOrders.filter((o) => o.paymentStatus === "paid" || o.status === "completed").length;
-  }, [todayOrders]);
+  const todayPaidOrdersCount = todayPaidOrders.length;
+  const todayLiveOrdersCount = todayLiveOrders.length;
 
-  // Yesterday actual sales directly from real orders
+  // Yesterday actual sales directly from settled paid orders
   const yesterdaySales = useMemo(() => {
-    return yesterdayOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
-  }, [yesterdayOrders]);
+    return yesterdayPaidOrders.reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [yesterdayPaidOrders]);
 
-  const yesterdayOrdersCount = yesterdayOrders.length;
+  const yesterdayOrdersCount = yesterdayPaidOrders.length;
 
   // Comparison metrics
   const diffAmount = todaySales - yesterdaySales;
@@ -121,8 +145,11 @@ export function Dashboard() {
     : (todaySales > 0 ? 100 : 0);
   const isPositiveGrowth = diffAmount >= 0;
 
+  // Toggle for This Week vs Previous Week sales in Weekly Everyday Sales Chart
+  const [selectedWeek, setSelectedWeek] = useState<"current" | "previous">("current");
+
   // Calculate current week's Monday for the column chart
-  const startOfWeek = useMemo(() => {
+  const startOfThisWeek = useMemo(() => {
     const d = new Date();
     const day = d.getDay(); // 0 is Sun, 1 is Mon...
     const diff = day === 0 ? -6 : 1 - day;
@@ -131,35 +158,72 @@ export function Dashboard() {
     return d;
   }, []);
 
-  // Weekly everyday column chart dynamically calculated from real orders of the current week
+  // Calculate previous week's Monday (7 days prior)
+  const startOfPreviousWeek = useMemo(() => {
+    const d = new Date(startOfThisWeek);
+    d.setDate(d.getDate() - 7);
+    return d;
+  }, [startOfThisWeek]);
+
+  // Weekly everyday column chart dynamically calculated from real PAID orders of the selected week
   const weeklyData = useMemo(() => {
+    const baseDate = selectedWeek === "current" ? startOfThisWeek : startOfPreviousWeek;
+
     return DAYS_OF_WEEK.map((d, index) => {
-      const targetDate = new Date(startOfWeek);
-      targetDate.setDate(startOfWeek.getDate() + index);
+      const targetDate = new Date(baseDate);
+      targetDate.setDate(baseDate.getDate() + index);
 
       const isToday = isSameDate(targetDate, now);
 
-      // Filter real orders for this specific date in the current week
-      const dayOrders = validOrders.filter((o) => isSameDate(o?.createdAt, targetDate));
+      // Filter real PAID orders for this specific date in the selected week (Excludes live unpaid orders)
+      const dayPaidOrders = paidOrders.filter((o) => isSameDate(o?.createdAt, targetDate));
 
-      const sales = dayOrders.reduce((s, o) => s + (Number(o?.total) || 0), 0);
-      const orderCount = dayOrders.length;
+      const sales = dayPaidOrders.reduce((s, o) => s + (Number(o?.total) || 0), 0);
+      const orderCount = dayPaidOrders.length;
+      const dateLabel = targetDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
       return {
         day: d.day,
         dayFull: d.dayFull,
+        dateLabel,
         sales,
         orders: orderCount,
         isToday,
       };
     });
-  }, [validOrders, startOfWeek, now]);
+  }, [paidOrders, selectedWeek, startOfThisWeek, startOfPreviousWeek, now]);
+
+  const selectedWeekTotalSales = useMemo(() => {
+    return weeklyData.reduce((sum, d) => sum + d.sales, 0);
+  }, [weeklyData]);
+
+  const thisWeekTotal = useMemo(() => {
+    return DAYS_OF_WEEK.reduce((sum, _, index) => {
+      const targetDate = new Date(startOfThisWeek);
+      targetDate.setDate(startOfThisWeek.getDate() + index);
+      const daySales = paidOrders
+        .filter((o) => isSameDate(o?.createdAt, targetDate))
+        .reduce((s, o) => s + (Number(o?.total) || 0), 0);
+      return sum + daySales;
+    }, 0);
+  }, [paidOrders, startOfThisWeek]);
+
+  const prevWeekTotal = useMemo(() => {
+    return DAYS_OF_WEEK.reduce((sum, _, index) => {
+      const targetDate = new Date(startOfPreviousWeek);
+      targetDate.setDate(startOfPreviousWeek.getDate() + index);
+      const daySales = paidOrders
+        .filter((o) => isSameDate(o?.createdAt, targetDate))
+        .reduce((s, o) => s + (Number(o?.total) || 0), 0);
+      return sum + daySales;
+    }, 0);
+  }, [paidOrders, startOfPreviousWeek]);
 
   const peakDay = useMemo(() => {
     const list = [...weeklyData];
     const max = list.sort((a, b) => b.sales - a.sales)[0];
     const found = (max && max.sales > 0 ? max : weeklyData.find((w) => w.isToday)) || weeklyData[0];
-    return found ?? { day: "Mon", dayFull: "Monday", sales: 0, orders: 0, isToday: true };
+    return found ?? { day: "Mon", dayFull: "Monday", dateLabel: "", sales: 0, orders: 0, isToday: true };
   }, [weeklyData]);
 
   const handleRefresh = async () => {
@@ -296,7 +360,7 @@ export function Dashboard() {
 
         {/* TODAY SALES & YESTERDAY VS TODAY COMPARISON CARDS */}
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Card 1: Today's Sales (Directly synced with real completed orders) */}
+          {/* Card 1: Today's Sales (Realized from paid settled bills only; live orders excluded) */}
           <div className="card-surface p-4 sm:p-5 border-l-4 border-l-primary relative overflow-hidden min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
@@ -309,16 +373,16 @@ export function Dashboard() {
             <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(todaySales)}</div>
             <div className="mt-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
               <span className="font-bold text-foreground">
-                {todayOrdersCount} {todayOrdersCount === 1 ? "Order" : "Orders"}
-                {todayOrdersCount > 0 && todayPaidOrdersCount < todayOrdersCount ? ` (${todayPaidOrdersCount} Paid)` : ""}
+                {todayPaidOrdersCount} {todayPaidOrdersCount === 1 ? "Paid Bill" : "Paid Bills"}
+                {todayLiveOrdersCount > 0 ? ` · ${todayLiveOrdersCount} Live Unpaid (${inr(todayLiveAmount)})` : ""}
               </span>
               <span className="font-bold text-primary font-mono">
-                {todayOrdersCount > 0 ? inr(Math.round(todaySales / todayOrdersCount)) : "₹0"} Avg/Bill
+                {todayPaidOrdersCount > 0 ? inr(Math.round(todaySales / todayPaidOrdersCount)) : "₹0"} Avg/Bill
               </span>
             </div>
           </div>
 
-          {/* Card 2: Yesterday's Sales */}
+          {/* Card 2: Yesterday's Sales (Realized from paid settled bills only) */}
           <div className="card-surface p-4 sm:p-5 border-l-4 border-l-blue-500 relative overflow-hidden min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
@@ -330,7 +394,7 @@ export function Dashboard() {
             </div>
             <div className="mt-3 text-2xl sm:text-3xl font-black text-foreground font-mono">{inr(yesterdaySales)}</div>
             <div className="mt-2 text-xs font-semibold text-muted-foreground">
-              <span>{yesterdayOrdersCount} {yesterdayOrdersCount === 1 ? "Order" : "Orders"}</span>
+              <span>{yesterdayOrdersCount} {yesterdayOrdersCount === 1 ? "Paid Bill" : "Paid Bills"}</span>
             </div>
           </div>
 
@@ -382,21 +446,62 @@ export function Dashboard() {
 
         {/* WEEKLY COMPARISON COLUMN CHART (EVERYDAY SALES) */}
         <div className="card-surface p-4 sm:p-5 min-w-0 overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="font-extrabold text-base sm:text-lg flex items-center gap-2 text-foreground">
-                <BarChart2 className="size-5 text-primary shrink-0" /> Weekly Everyday Sales Comparison (Column Chart)
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Day-by-day revenue comparison across Monday to Sunday (Golden Yellow bar indicates peak rush day)
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-extrabold text-base sm:text-lg flex items-center gap-2 text-foreground">
+                  <BarChart2 className="size-5 text-primary shrink-0" /> Weekly Everyday Sales Comparison (Column Chart)
+                </h2>
+                <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-black text-primary">
+                  {selectedWeek === "current" ? "This Week" : "Previous Week"}: {inr(selectedWeekTotalSales)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {selectedWeek === "current" 
+                  ? "Monday to Sunday revenue for active week (paid settled sales only; live bills excluded)" 
+                  : "Monday to Sunday revenue for previous week (paid settled sales only)"}
               </p>
             </div>
-            {peakDay && peakDay.sales > 0 && (
-              <span className="self-start sm:self-auto inline-flex items-center gap-1.5 rounded-full bg-yellow-400/25 px-3 py-1 text-xs font-black text-yellow-700 border border-yellow-400/40 shadow-sm">
-                <Sparkles className="size-3.5 text-yellow-600 shrink-0" /> Peak: {peakDay.dayFull} ({inr(peakDay.sales)})
-              </span>
-            )}
+
+            {/* BUTTON CONTROLS: THIS WEEK vs PREVIOUS WEEK */}
+            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-muted/60 p-1 rounded-xl border shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedWeek("current")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5",
+                  selectedWeek === "current"
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-yellow-400/40"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>📅 This Week</span>
+                <span className="text-[10px] opacity-80 font-mono">({inr(thisWeekTotal)})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedWeek("previous")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5",
+                  selectedWeek === "previous"
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-yellow-400/40"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>⏮️ Previous Week</span>
+                <span className="text-[10px] opacity-80 font-mono">({inr(prevWeekTotal)})</span>
+              </button>
+            </div>
           </div>
+
+          {peakDay && peakDay.sales > 0 && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-400/20 px-3 py-1 text-xs font-black text-yellow-800 dark:text-yellow-400 border border-yellow-400/40 shadow-xs">
+                <Sparkles className="size-3.5 text-yellow-600 shrink-0" />
+                Peak Rush: {peakDay.dayFull} {peakDay.dateLabel ? `(${peakDay.dateLabel})` : ""} · {inr(peakDay.sales)} ({peakDay.orders} paid bills)
+              </span>
+            </div>
+          )}
 
           {/* Recharts Column Chart */}
           <div className="h-64 sm:h-80 w-full min-w-0">
@@ -417,10 +522,10 @@ export function Dashboard() {
                   tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} 
                 />
                 <Tooltip 
-                  formatter={(value: number) => [inr(value), "Sales Revenue"]}
+                  formatter={(value: number) => [inr(value), "Settled Sales"]}
                   labelFormatter={(label, items) => {
                     const row = items[0]?.payload;
-                    return row ? `${row.dayFull} • ${row.orders} Orders` : String(label);
+                    return row ? `${row.dayFull} (${row.dateLabel}) • ${row.orders} Paid Bills` : String(label);
                   }}
                   contentStyle={{ 
                     backgroundColor: "var(--card)", 
@@ -435,7 +540,7 @@ export function Dashboard() {
                   {weeklyData.map((entry, index) => (
                     <Cell 
                       key={`weekly-cell-${index}`} 
-                      fill={entry.sales === peakDay.sales && entry.sales > 0 ? "#facc15" : entry.isToday ? "var(--primary)" : "#a78bfa"} 
+                      fill={entry.sales === peakDay.sales && entry.sales > 0 ? "#facc15" : (entry.isToday && selectedWeek === "current") ? "var(--primary)" : "#a78bfa"} 
                     />
                   ))}
                 </Bar>
@@ -449,7 +554,7 @@ export function Dashboard() {
               <div 
                 key={d.day} 
                 className={`rounded-xl border p-2.5 text-center transition-all ${
-                  d.isToday 
+                  d.isToday && selectedWeek === "current"
                     ? "bg-primary/10 border-primary shadow-sm" 
                     : d.sales === peakDay.sales && d.sales > 0
                     ? "bg-yellow-400/10 border-yellow-400/50"
@@ -458,11 +563,12 @@ export function Dashboard() {
               >
                 <div className="text-[11px] font-extrabold uppercase text-muted-foreground flex items-center justify-center gap-1">
                   <span>{d.day}</span>
-                  {d.isToday && <span className="size-1.5 rounded-full bg-primary" title="Today"></span>}
+                  {d.isToday && selectedWeek === "current" && <span className="size-1.5 rounded-full bg-primary" title="Today"></span>}
                   {d.sales === peakDay.sales && d.sales > 0 && <span className="size-1.5 rounded-full bg-yellow-400" title="Peak Day"></span>}
                 </div>
-                <div className="text-xs sm:text-sm font-black text-foreground font-mono mt-1">{inr(d.sales)}</div>
-                <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{d.orders} orders</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-0.5">{d.dateLabel}</div>
+                <div className="text-xs sm:text-sm font-black text-foreground font-mono mt-0.5">{inr(d.sales)}</div>
+                <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{d.orders} paid</div>
               </div>
             ))}
           </div>
