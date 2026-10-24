@@ -3,11 +3,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { 
   IndianRupee, TrendingUp, TrendingDown, RefreshCw, 
   Plus, Calendar, BarChart2, CheckCircle2, Clock, 
-  ArrowUpRight, Sparkles, Layers, ExternalLink, Settings, Utensils
+  ArrowUpRight, Sparkles, Layers, ExternalLink, Settings, Utensils,
+  PieChart as PieChartIcon, QrCode, Banknote
 } from "lucide-react";
 import { 
   Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
-  CartesianGrid, Cell 
+  CartesianGrid, Cell, PieChart, Pie
 } from "recharts";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -138,6 +139,54 @@ export function Dashboard() {
   }, [yesterdayPaidOrders]);
 
   const yesterdayOrdersCount = yesterdayPaidOrders.length;
+
+  // Today Payment Mode Breakdown: UPI vs Cash
+  const todayUpiSales = useMemo(() => {
+    return todayPaidOrders
+      .filter((o) => (o.paymentMethod?.toLowerCase() || "") === "upi")
+      .reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [todayPaidOrders]);
+
+  const todayCashSales = useMemo(() => {
+    return todayPaidOrders
+      .filter((o) => (o.paymentMethod?.toLowerCase() || "") === "cash")
+      .reduce((sum, o) => sum + (Number(o?.total) || 0), 0);
+  }, [todayPaidOrders]);
+
+  const todayUpiCount = useMemo(() => {
+    return todayPaidOrders.filter((o) => (o.paymentMethod?.toLowerCase() || "") === "upi").length;
+  }, [todayPaidOrders]);
+
+  const todayCashCount = useMemo(() => {
+    return todayPaidOrders.filter((o) => (o.paymentMethod?.toLowerCase() || "") === "cash").length;
+  }, [todayPaidOrders]);
+
+  const upiPercent = todaySales > 0 ? Math.round((todayUpiSales / todaySales) * 100) : 0;
+  const cashPercent = todaySales > 0 ? Math.round((todayCashSales / todaySales) * 100) : 0;
+
+  const todayPaymentPieData = useMemo(() => {
+    if (todaySales === 0) {
+      return [{ name: "No Sales", value: 1, color: "var(--muted)" }];
+    }
+    const data = [];
+    if (todayUpiSales > 0 || (todayUpiSales === 0 && todayCashSales === 0)) {
+      data.push({
+        name: "UPI / QR",
+        value: todayUpiSales,
+        count: todayUpiCount,
+        color: "#9333ea", // vibrant purple brand
+      });
+    }
+    if (todayCashSales > 0 || (todayUpiSales === 0 && todayCashSales === 0)) {
+      data.push({
+        name: "Cash",
+        value: todayCashSales,
+        count: todayCashCount,
+        color: "#f59e0b", // warm amber brand
+      });
+    }
+    return data;
+  }, [todaySales, todayUpiSales, todayCashSales, todayUpiCount, todayCashCount]);
 
   // Comparison metrics
   const diffAmount = todaySales - yesterdaySales;
@@ -445,8 +494,10 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* WEEKLY COMPARISON COLUMN CHART (EVERYDAY SALES) */}
-        <div className="card-surface p-4 sm:p-5 min-w-0 overflow-hidden">
+        {/* CHARTS ROW: WEEKLY COLUMN CHART (2 COLS) + TODAY PAYMENT MODES PIE CHART (1 COL) */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* WEEKLY COMPARISON COLUMN CHART (EVERYDAY SALES) */}
+          <div className="card-surface p-4 sm:p-5 min-w-0 overflow-hidden xl:col-span-2 flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -575,7 +626,119 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Live Active Kitchen Orders Section */}
+        {/* TODAY PAYMENT MODES (UPI vs CASH) PIE CHART */}
+        <div className="card-surface p-4 sm:p-5 min-w-0 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h2 className="font-extrabold text-base flex items-center gap-2 text-foreground">
+                <PieChartIcon className="size-5 text-primary shrink-0" /> Today&apos;s Payment Modes
+              </h2>
+              <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-black text-primary font-mono">
+                {inr(todaySales)}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Live UPI QR vs Cash collections for today&apos;s settled orders
+            </p>
+
+            {/* Donut Chart with Center Total */}
+            <div className="relative h-60 w-full my-3 flex items-center justify-center">
+              {todaySales > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip 
+                      formatter={(val: number) => [inr(val), "Collected"]}
+                      contentStyle={{ 
+                        backgroundColor: "var(--card)", 
+                        borderColor: "var(--border)", 
+                        borderRadius: "0.75rem", 
+                        fontSize: "12px", 
+                        fontWeight: "bold",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)" 
+                      }}
+                    />
+                    <Pie
+                      data={todayPaymentPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={todayUpiSales > 0 && todayCashSales > 0 ? 5 : 0}
+                      stroke="none"
+                    >
+                      {todayPaymentPieData.map((entry, idx) => (
+                        <Cell key={`pie-cell-${idx}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="size-40 rounded-full border-4 border-dashed border-muted flex flex-col items-center justify-center text-center p-3">
+                  <PieChartIcon className="size-6 text-muted-foreground/40 mb-1" />
+                  <span className="text-[11px] font-bold text-muted-foreground">No settled bills yet today</span>
+                </div>
+              )}
+              {/* Center Stats Overlay */}
+              {todaySales > 0 && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Collected</span>
+                  <span className="text-xl font-black font-mono text-foreground leading-tight">{inr(todaySales)}</span>
+                  <span className="text-[11px] font-bold text-emerald-600">{todayPaidOrdersCount} bills</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Breakdown Cards */}
+          <div className="space-y-2.5 pt-3 border-t">
+            {/* UPI Card */}
+            <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-xl bg-purple-600/15 text-purple-600 flex items-center justify-center shrink-0">
+                  <QrCode className="size-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    <span>UPI / QR</span>
+                    <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-full bg-purple-600/15 text-purple-700 dark:text-purple-300 font-mono">
+                      {upiPercent}%
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground font-medium">{todayUpiCount} {todayUpiCount === 1 ? "bill" : "bills"}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-black font-mono text-purple-700 dark:text-purple-300">{inr(todayUpiSales)}</div>
+              </div>
+            </div>
+
+            {/* Cash Card */}
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                  <Banknote className="size-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    <span>Cash Register</span>
+                    <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-mono">
+                      {cashPercent}%
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground font-medium">{todayCashCount} {todayCashCount === 1 ? "bill" : "bills"}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">{inr(todayCashSales)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Active Kitchen Orders Section */}
         <div className="card-surface p-4 sm:p-5 min-w-0">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
