@@ -91,7 +91,8 @@ export function mergeDuplicateTableOrders(ordersList: Order[]): {
  */
 export function reconcileTablesWithOrders(
   tablesList: RestaurantTable[],
-  ordersList: Order[]
+  ordersList: Order[],
+  isOrdersLoaded: boolean = true
 ): {
   reconciledTables: RestaurantTable[];
   changedTables: RestaurantTable[];
@@ -133,8 +134,10 @@ export function reconcileTablesWithOrders(
       }
       return t;
     } else {
-      // Table has NO live unpaid bill
-      // If table is erroneously marked occupied or has an old orderId, free it immediately!
+      // Only auto-free occupied tables if orders have genuinely finished loading!
+      if (!isOrdersLoaded) {
+        return t;
+      }
       if (t.status === "occupied" || t.orderId) {
         const changed: RestaurantTable = {
           ...t,
@@ -204,6 +207,11 @@ export function PosProvider({ children }: { children: ReactNode }) {
   // Audio & kitchen notification tracking refs
   const previousOrderCountsRef = useRef<Map<string, number>>(new Map());
   const isInitialOrdersLoadedRef = useRef<boolean>(false);
+  const latestOrdersRef = useRef<Order[]>([]);
+
+  useEffect(() => {
+    latestOrdersRef.current = orders;
+  }, [orders]);
 
   // Client-side hydration from localStorage after mount
   useEffect(() => {
@@ -402,7 +410,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
                 }
               });
               const merged = Array.from(map.values());
-              const { reconciledTables, changedTables } = reconcileTablesWithOrders(merged, orders);
+              const currentOrders = latestOrdersRef.current.length > 0 ? latestOrdersRef.current : orders;
+              const { reconciledTables, changedTables } = reconcileTablesWithOrders(
+                merged,
+                currentOrders,
+                isInitialOrdersLoadedRef.current
+              );
               if (changedTables.length > 0) {
                 changedTables.forEach((ct) => syncTableToSupabase(ct));
               }
@@ -430,8 +443,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
           loadData();
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, () => {
-          loadData();
+        .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload) => {
+          if (payload.new && (payload.new as any).id) {
+            const newT = payload.new as any;
+            setTables((current) => current.map((t) => t.id === newT.id ? {
+              ...t,
+              name: newT.name || t.name,
+              seats: Number(newT.seats || t.seats),
+              status: newT.status || t.status,
+              orderId: newT.order_id || undefined,
+              reservedFor: newT.reserved_for || undefined,
+            } : t));
+          }
         })
         .subscribe();
     }
