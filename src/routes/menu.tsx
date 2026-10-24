@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { Pencil, Plus, Trash2, Search, SlidersHorizontal, RotateCcw, Sparkles } from "lucide-react";
+import { Pencil, Plus, Trash2, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, ErrorState, LoadingGrid, PageHeader, VegMark } from "@/components/pos/ui";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/menu")({
 });
 
 function MenuPage() {
-  const { products, setProducts, resetToOfficialMenu } = usePos();
+  const { products, setProducts } = usePos();
   const q = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   const [extraCats, setExtraCats] = useState<Category[]>([]);
   const cats = [...(q.data ?? []), ...extraCats];
@@ -78,18 +78,6 @@ function MenuPage() {
         subtitle={`${products.length} crafted dishes across ${cats.length} specialty categories`}
         actions={
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => {
-                if (confirm("Reset to official Meat Theory menu from the brand card? This will restore all standard items and prices.")) {
-                  resetToOfficialMenu();
-                  toast.success("Official Meat Theory menu restored!");
-                }
-              }}
-              title="Restore Authentic Menu"
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3.5 py-2.5 text-xs font-black shadow-sm hover:bg-amber-500/20 transition-colors"
-            >
-              <RotateCcw className="size-3.5" /> Official Menu
-            </button>
             <button
               onClick={() => {
                 const n = prompt("New category name");
