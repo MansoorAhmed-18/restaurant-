@@ -374,14 +374,15 @@ export function Pos() {
                             <button
                               type="button"
                               title={`Remove ${item.name} from running bill`}
-                              onClick={() => {
-                                if (window.confirm(`Remove ${item.name} from Bill #${curActiveOrder.number}?`)) {
-                                  pos.removeItemFromRunningOrder(curActiveOrder.id, idx);
-                                }
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                pos.removeItemFromRunningOrder(curActiveOrder.id, item.name);
                               }}
-                              className="size-5 rounded bg-destructive/15 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                              className="size-6 rounded bg-destructive/15 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-90"
                             >
-                              <Trash2 className="size-2.5" />
+                              <Trash2 className="size-3 pointer-events-none" />
                             </button>
                           </div>
                         </div>

@@ -688,14 +688,15 @@ function Tables() {
                                       <button
                                         type="button"
                                         title={`Remove ${item.name} from running order`}
-                                        onClick={() => {
-                                          if (window.confirm(`Remove ${item.name} from Bill #${activeOrder.number}?`)) {
-                                            removeItemFromRunningOrder(activeOrder.id, idx);
-                                          }
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          removeItemFromRunningOrder(activeOrder.id, item.name);
                                         }}
-                                        className="size-6 rounded-md bg-destructive/10 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                                        className="size-7 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-90"
                                       >
-                                        <Trash2 className="size-3" />
+                                        <Trash2 className="size-3.5 pointer-events-none" />
                                       </button>
                                     )}
                                   </div>

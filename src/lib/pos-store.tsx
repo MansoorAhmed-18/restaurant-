@@ -176,7 +176,7 @@ interface Store {
   payOrder: (id: string, method: PaymentMethod) => void;
   setOrderStatus: (id: string, s: OrderStatus) => void;
   setTables: (fn: (t: RestaurantTable[]) => RestaurantTable[]) => void;
-  removeItemFromRunningOrder: (orderId: string, itemIndex: number) => boolean;
+  removeItemFromRunningOrder: (orderId: string, itemIdentifier: number | string) => boolean;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -760,7 +760,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     })),
-    removeItemFromRunningOrder: (orderId: string, itemIndex: number) => {
+    removeItemFromRunningOrder: (orderId: string, itemIdentifier: number | string) => {
       let orderToSync: Order | null = null;
       let tableToFree: string | undefined = undefined;
       let removedName = "";
@@ -774,12 +774,22 @@ export function PosProvider({ children }: { children: ReactNode }) {
           }
 
           const currentItems = consolidateOrderItems(o.items || []);
-          if (itemIndex < 0 || itemIndex >= currentItems.length) return o;
+          let targetIndex = -1;
+          if (typeof itemIdentifier === "number") {
+            targetIndex = itemIdentifier;
+          } else if (typeof itemIdentifier === "string") {
+            targetIndex = currentItems.findIndex((it) => it.name === itemIdentifier || it.productId === itemIdentifier);
+          }
 
-          const targetItem = currentItems[itemIndex];
+          if (targetIndex < 0 || targetIndex >= currentItems.length) {
+            console.warn("Item not found to remove:", itemIdentifier);
+            return o;
+          }
+
+          const targetItem = currentItems[targetIndex];
           removedName = targetItem.name;
 
-          const newItems = currentItems.filter((_, idx) => idx !== itemIndex);
+          const newItems = currentItems.filter((_, idx) => idx !== targetIndex);
 
           const subtotal = newItems.reduce((s, i) => s + i.price * i.qty, 0);
           const tax = 0;
