@@ -109,7 +109,9 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
         name: item.name,
         price: item.price,
         qty: item.qty,
-        created_at: item.addedAt || undefined,
+        created_at: item.isAddon && item.addedAt 
+          ? item.addedAt 
+          : (order.createdAt || new Date().toISOString()),
       }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(lineItems);
@@ -173,11 +175,30 @@ export async function fetchOrdersFromSupabase() {
 
     return ordersData.map((o: any) => {
       const orderCreatedTime = o.created_at ? new Date(o.created_at).getTime() : 0;
+      const itemsList = o.order_items || [];
 
-      const rawItems = (o.order_items || []).map((item: any) => {
+      // Find timestamps of all line items
+      const itemTimes = itemsList
+        .map((it: any) => (it.created_at ? new Date(it.created_at).getTime() : 0))
+        .filter((t: number) => t > 0);
+
+      // Base time represents the initial ticket placement time
+      const baseInitialTime = itemTimes.length > 0 
+        ? Math.min(...itemTimes) 
+        : orderCreatedTime;
+
+      const maxItemTime = itemTimes.length > 0 ? Math.max(...itemTimes) : baseInitialTime;
+      // An order has genuine add-ons ONLY if there is a distinct later batch (> 60s after initial items)
+      const hasDistinctAddonBatch = (maxItemTime - baseInitialTime) > 60000;
+
+      const rawItems = itemsList.map((item: any) => {
         const itemCreatedTime = item.created_at ? new Date(item.created_at).getTime() : 0;
-        // Detect if item was added later as an add-on (more than 45s after initial ticket created)
-        const isAddon = itemCreatedTime > 0 && orderCreatedTime > 0 && (itemCreatedTime - orderCreatedTime > 45000);
+        // ONLY mark as add-on if this specific item belongs to the later batch!
+        const isAddon = Boolean(
+          hasDistinctAddonBatch &&
+          itemCreatedTime > 0 &&
+          (itemCreatedTime - baseInitialTime > 60000)
+        );
 
         return {
           productId: item.product_id || "",

@@ -141,7 +141,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
   // Client-side hydration from localStorage after mount
   useEffect(() => {
     const rawStoredOrders = loadStored<Order[]>("res_pos_orders", []);
-    const cleanOrders = (rawStoredOrders || []).filter((o) => {
+    const cleanOrders = (rawStoredOrders || []).map((o) => {
+      if (o && o.items && o.items.length > 0 && o.items.every((it) => it.isAddon)) {
+        return {
+          ...o,
+          items: o.items.map((it) => ({ ...it, isAddon: false })),
+        };
+      }
+      return o;
+    }).filter((o) => {
       if (!o || !o.id) return false;
       const isLegacyId = /^o10[3-9]\d|^o11[0-1]\d/.test(o.id);
       const isOldDate = o.createdAt ? new Date(o.createdAt).getTime() < new Date("2026-10-22T17:00:00Z").getTime() : false;

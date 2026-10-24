@@ -120,7 +120,8 @@ function Orders() {
             <tbody>
               {list.map((o) => {
                 const dt = formatOrderDateTime(o.createdAt);
-                const hasAddons = Boolean(o.items?.some((it) => it.isAddon));
+                const allItemsAddon = o.items && o.items.length > 0 && o.items.every((it) => it.isAddon);
+                const hasAddons = !allItemsAddon && Boolean(o.items?.some((it) => it.isAddon));
                 return (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="p-4 font-extrabold text-foreground">
@@ -180,7 +181,12 @@ function Orders() {
           {sel && (() => {
             const dt = formatOrderDateTime(sel.createdAt);
             const consolidated = consolidateOrderItems(sel.items);
-            const addonItems = consolidated.filter((it) => it.isAddon);
+            // Safety guard: An order can never consist 100% of add-on items (stale cache safeguard)
+            const allMarked = consolidated.length > 0 && consolidated.every((it) => it.isAddon);
+            const displayItems = allMarked
+              ? consolidated.map((it) => ({ ...it, isAddon: false }))
+              : consolidated;
+            const addonItems = displayItems.filter((it) => it.isAddon);
             return (
               <>
                 <SheetHeader>
@@ -211,7 +217,7 @@ function Orders() {
                     )}
                   </div>
 
-                  {/* Kitchen Alert Banner if add-ons exist */}
+                  {/* Kitchen Alert Banner only if genuine newly added items exist */}
                   {addonItems.length > 0 && (
                     <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-1">
                       <div className="flex items-center gap-2 text-xs font-black text-amber-700 dark:text-amber-400">
@@ -219,7 +225,7 @@ function Orders() {
                         <span>KITCHEN NOTICE: {addonItems.reduce((s, it) => s + it.qty, 0)} NEW FOOD ITEM(S) ADDED</span>
                       </div>
                       <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 font-medium">
-                        Chef: Prepare the newly added items highlighted in orange below. Previous round items are already cooked.
+                        Chef: Prepare the newly added dishes highlighted in orange below. All other dishes are normal (already cooked).
                       </p>
                     </div>
                   )}
@@ -239,9 +245,9 @@ function Orders() {
                     <span>· Walk-in Guest</span>
                   </div>
 
-                  {/* Chef ticket items list with clear round/add-on indicators */}
-                  <ul className="space-y-2 border-y py-3 text-sm">
-                    {consolidated.map((i, idx) => {
+                  {/* Chef ticket items list: Only newly added items have label, others are normal */}
+                  <ul className="space-y-1.5 border-y py-3 text-sm">
+                    {displayItems.map((i, idx) => {
                       const isNew = Boolean(i.isAddon);
                       return (
                         <li 
@@ -249,8 +255,8 @@ function Orders() {
                           className={cn(
                             "flex items-center justify-between p-2 rounded-xl transition-all",
                             isNew 
-                              ? "bg-amber-500/15 border border-amber-500/40 text-amber-950 dark:text-amber-100" 
-                              : "bg-muted/20 hover:bg-muted/40"
+                              ? "bg-amber-500/15 border-2 border-amber-500/50 text-amber-950 dark:text-amber-100 shadow-xs" 
+                              : "hover:bg-muted/40"
                           )}
                         >
                           <div className="flex items-center gap-2.5">
@@ -258,33 +264,33 @@ function Orders() {
                               className={cn(
                                 "size-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0",
                                 isNew 
-                                  ? "bg-amber-500 text-white shadow-sm ring-2 ring-amber-400/40" 
+                                  ? "bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40" 
                                   : "bg-muted text-foreground"
                               )}
                             >
                               {i.qty}×
                             </span>
                             <div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-foreground">{i.name}</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={cn(isNew ? "font-extrabold text-amber-950 dark:text-amber-100" : "font-semibold text-foreground")}>
+                                  {i.name}
+                                </span>
                                 {isNew && (
-                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-600 text-white shadow-xs">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-600 text-white shadow-xs animate-pulse">
                                     <Flame className="size-3" /> NEW ADD-ON
                                   </span>
                                 )}
                               </div>
-                              {isNew ? (
-                                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold">
-                                  🔥 Prepare Now · Added after initial order
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground font-medium">
-                                  Initial Round Order
+                              {isNew && (
+                                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold block mt-0.5">
+                                  🔥 Prepare Now · Added in later round
                                 </span>
                               )}
                             </div>
                           </div>
-                          <span className="font-black text-foreground shrink-0">{inr(i.qty * i.price)}</span>
+                          <span className={cn("shrink-0", isNew ? "font-black text-amber-950 dark:text-amber-100" : "font-semibold text-foreground")}>
+                            {inr(i.qty * i.price)}
+                          </span>
                         </li>
                       );
                     })}
