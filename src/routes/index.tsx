@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { 
   IndianRupee, TrendingUp, TrendingDown, RefreshCw, 
   Plus, Calendar, BarChart2, CheckCircle2, Clock, 
   ArrowUpRight, Sparkles, Layers, ExternalLink, Settings, Utensils,
-  PieChart as PieChartIcon, QrCode, Banknote
+  PieChart as PieChartIcon, QrCode, Banknote, Lock
 } from "lucide-react";
 import { 
   Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
@@ -39,6 +39,7 @@ const DAYS_OF_WEEK = [
 
 export function Dashboard() {
   const { orders, tables } = usePos();
+  const nav = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [staff, setStaff] = useState<StaffUser>(() => getActiveStaff() || { name: "Staff", role: "Manager", username: "manager" });
   const isUserMgr = isManager(staff);
@@ -48,12 +49,19 @@ export function Dashboard() {
 
   useEffect(() => {
     const s = getActiveStaff();
-    if (s) setStaff(s);
+    if (s) {
+      setStaff(s);
+      if (!isManager(s)) {
+        toast.error("Access Restricted: Only Managers can view the Sales Dashboard.");
+        nav({ to: "/pos", replace: true });
+        return;
+      }
+    }
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("fabric_dashboard_url");
       if (stored) setFabricUrl(stored);
     }
-  }, []);
+  }, [nav]);
 
   const getTimeGreeting = () => {
     const hr = new Date().getHours();
@@ -307,6 +315,36 @@ export function Dashboard() {
     month: "short",
     year: "numeric",
   });
+
+  if (!isUserMgr) {
+    return (
+      <AppShell>
+        <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
+          <div className="size-16 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center shadow-lg border border-destructive/20">
+            <Lock className="size-8" />
+          </div>
+          <h2 className="text-2xl font-black text-foreground">Manager Only Access</h2>
+          <p className="max-w-md text-sm text-muted-foreground font-medium">
+            The Sales & Business Analytics Dashboard is restricted strictly to Restaurant Managers. Cashiers and Kitchen staff can access POS Billing and Tables.
+          </p>
+          <div className="flex items-center gap-3 pt-2">
+            <Link
+              to="/pos"
+              className="px-5 py-2.5 rounded-xl bg-primary text-xs font-black text-primary-foreground shadow hover:opacity-90 transition-opacity"
+            >
+              Go to POS Billing
+            </Link>
+            <Link
+              to="/tables"
+              className="px-5 py-2.5 rounded-xl border bg-card text-xs font-bold text-foreground hover:bg-muted"
+            >
+              Floor & Tables
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

@@ -51,7 +51,11 @@ export function Login() {
       }
 
       toast.success(`Welcome, ${res.staff.name} (${res.staff.role})!`);
-      nav({ to: "/" });
+      if (res.staff.role === "Manager") {
+        nav({ to: "/" });
+      } else {
+        nav({ to: "/pos" });
+      }
     } catch {
       setLoading(false);
       toast.error("Authentication failed. Please check credentials and try again.");

@@ -174,10 +174,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const side = (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar p-4 shadow-sm">
-      <div className="px-2 py-2"><Logo /></div>
+      <div className="px-2 py-2">
+        <Link to={isManager ? "/" : "/pos"} className="block">
+          <Logo />
+        </Link>
+      </div>
       <nav className="mt-6 flex flex-1 flex-col gap-1.5">
         {nav
-          .filter((item) => item.to !== "/payments" || isManager)
+          .filter((item) => {
+            if (item.to === "/payments") return isManager;
+            if (item.to === "/") return isManager;
+            return true;
+          })
           .map(({ to, label, icon: Icon }) => (
           <Link 
             key={to} 
@@ -248,7 +256,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       <div className="min-w-0 flex-1 flex flex-col min-h-screen pb-16 lg:pb-0">
         <header className="no-print sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 py-3 lg:hidden shadow-sm">
-          <Logo />
+          <Link to={isManager ? "/" : "/pos"} className="block">
+            <Logo />
+          </Link>
           <div className="flex items-center gap-2">
             {isManager && (
               <button 
@@ -277,7 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           { to: "/tables", label: "Tables", icon: LayoutGrid },
           { to: "/orders", label: "Orders", icon: ClipboardList },
           { to: "/menu", label: "Menu", icon: UtensilsCrossed },
-          { to: "/", label: "Home", icon: LayoutDashboard },
+          ...(isManager ? [{ to: "/", label: "Dashboard", icon: LayoutDashboard }] : []),
         ].map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
