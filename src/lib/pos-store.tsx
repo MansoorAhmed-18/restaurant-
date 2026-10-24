@@ -218,8 +218,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
       return o;
     }).filter((o) => {
       if (!o || !o.id) return false;
-      const isLegacyId = /^o10[3-9]\d|^o11[0-1]\d/.test(o.id);
-      const isOldDate = o.createdAt ? new Date(o.createdAt).getTime() < new Date("2026-10-22T17:00:00Z").getTime() : false;
+      const isLegacyId = /^o10\d\d|^o11[0-1]\d|^o112[0-4]/.test(o.id) || (typeof o.number === "number" && o.number < 1125);
+      const isOldDate = o.createdAt ? new Date(o.createdAt).getTime() < new Date("2026-10-23T00:00:00Z").getTime() : false;
       const hasOldDishes = o.items?.some((it) =>
         ["Paneer Tikka", "Butter Chicken", "Chicken 65", "Veg Spring Rolls", "Gulab Jamun", "Dal Makhani", "Rasmalai", "Mutton Dum Biryani", "Hyderabadi Chicken Biryani"].includes(it.name)
       );
@@ -335,12 +335,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
             setOrders((localOrders) => {
               const map = new Map<string, Order>();
               (localOrders || []).forEach((lo) => {
-                if (lo && lo.id && !/^o10[3-9]\d|^o11[0-1]\d/.test(lo.id)) {
+                if (lo && lo.id && !(/^o10\d\d|^o11[0-1]\d|^o112[0-4]/.test(lo.id) || (typeof lo.number === "number" && lo.number < 1125))) {
                   map.set(lo.id, lo);
                 }
               });
               remoteOrders.forEach((ro: Order) => {
-                if (!ro || !ro.id || /^o10[3-9]\d|^o11[0-1]\d/.test(ro.id)) return;
+                if (!ro || !ro.id || /^o10\d\d|^o11[0-1]\d|^o112[0-4]/.test(ro.id) || (typeof ro.number === "number" && ro.number < 1125)) return;
                 const local = map.get(ro.id);
                 if (local && local.paymentStatus === "paid" && ro.paymentStatus === "unpaid") {
                   const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
@@ -541,7 +541,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           tax,
           total,
           customerId: customerId || existingTableOrder.customerId,
-          status: isPaidDirectly ? "completed" : (existingTableOrder.status === "completed" ? "completed" : "preparing"),
+          status: isPaidDirectly ? "completed" : "preparing",
           paymentStatus: isPaidDirectly ? "paid" : "unpaid",
           paymentMethod: isPaidDirectly ? paidWithMethod : existingTableOrder.paymentMethod,
         };
@@ -602,7 +602,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const subtotal = consolidatedItems.reduce((s, i) => s + i.price * i.qty, 0);
       const tax = 0;
       const total = subtotal + tax;
-      const number = Math.max(...orders.map((o) => o.number), 1000) + 1;
+      const maxExistingNum = orders.reduce((max, o) => Math.max(max, typeof o.number === "number" ? o.number : 0), 1137);
+      const number = maxExistingNum + 1;
       const o: Order = {
         id: `o${number}`,
         number,

@@ -79,13 +79,13 @@ export function Dashboard() {
     return safeOrders.filter((o) => o && o.status !== "cancelled");
   }, [safeOrders]);
 
-  // Realized / collected sales: only paid orders are sales! (Live unpaid orders excluded)
+  // Realized / collected sales: strictly paid orders only! (Live unpaid tickets excluded)
   const paidOrders = useMemo(() => {
-    return validOrders.filter((o) => (o.paymentStatus === "paid" || o.status === "completed") && o.status !== "cancelled");
+    return validOrders.filter((o) => o.paymentStatus === "paid" && o.status !== "cancelled");
   }, [validOrders]);
 
   const liveOrders = useMemo(() => {
-    return validOrders.filter((o) => o.paymentStatus === "unpaid" && o.status !== "cancelled");
+    return validOrders.filter((o) => o.paymentStatus !== "paid" && o.status !== "cancelled");
   }, [validOrders]);
 
   const pendingOrders = useMemo(() => {
