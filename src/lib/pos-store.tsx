@@ -626,8 +626,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const tax = 0;
       const total = subtotal + tax;
       const allKnownOrders = (latestOrdersRef.current && latestOrdersRef.current.length > 0 ? latestOrdersRef.current : orders);
-      const freshOrders = allKnownOrders.filter((o) => typeof o.number === "number" && o.number < 1000);
-      const number = freshOrders.length > 0 ? Math.max(...freshOrders.map((o) => o.number)) + 1 : 1;
+      const validOrders = allKnownOrders.filter((o) => typeof o.number === "number");
+      const number = validOrders.length > 0 ? Math.max(...validOrders.map((o) => o.number)) + 1 : 1;
       const uniqueSuffix = Date.now().toString(36).slice(-4);
       const o: Order = {
         id: `o${number}_${uniqueSuffix}`,
