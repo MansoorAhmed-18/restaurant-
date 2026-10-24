@@ -538,7 +538,7 @@ export const products: Product[] = rawProducts.map((p) => ({
   image: getDefaultProductImage(p),
 }));
 
-const statuses = ["available", "available", "available", "available", "available", "reserved", "available", "available", "occupied", "available", "available", "available"] as const;
+const statuses = ["available", "available", "available", "available", "available", "reserved", "reserved", "available", "available", "available", "available", "available"] as const;
 const seatCounts = [2, 4, 4, 6, 2, 4, 8, 4, 2, 6, 4, 2] as const;
 
 export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
@@ -550,7 +550,7 @@ export const tables: RestaurantTable[] = Array.from({ length: 12 }, (_, i) => {
     seats,
     status,
     orderId: undefined,
-    reservedFor: status === "reserved" ? "Zubair · 8:30 PM" : undefined,
+    reservedFor: status === "reserved" ? (i === 5 ? "Zubair · 8:30 PM" : "Farhan Family · 9:00 PM") : undefined,
   };
 });
 

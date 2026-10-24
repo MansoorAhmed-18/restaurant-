@@ -75,33 +75,22 @@ function Tables() {
   const count = (s: TableStatus) => tables.filter((t) => t.status === s).length;
   const totalCapacity = useMemo(() => tables.reduce((acc, t) => acc + (t.seats || 0), 0), [tables]);
 
-  // Find active order linked to a table
+  // Find active order linked to a table (strictly live, unpaid orders only)
   const getTableActiveOrder = (t?: RestaurantTable | null): Order | null => {
-    if (!t || t.status === "available") return null;
-    if (t.orderId) {
-      const match = orders.find((o) => o.id === t.orderId);
-      if (match && match.status !== "cancelled") {
-        return match;
-      }
-    }
-    if (t.status === "occupied") {
-      const activeUnpaid = orders.find(
-        (o) => o.tableId === t.id && o.paymentStatus === "unpaid" && o.status !== "cancelled"
-      );
-      if (activeUnpaid) return activeUnpaid;
-
-      const latestOrder = orders.find(
-        (o) => o.tableId === t.id && o.status !== "cancelled"
-      );
-      if (latestOrder) return latestOrder;
-    }
-    return null;
+    if (!t) return null;
+    return orders.find(
+      (o) =>
+        (o.tableId === t.id || (t.orderId && o.id === t.orderId)) &&
+        o.paymentStatus === "unpaid" &&
+        o.status !== "cancelled" &&
+        o.status !== "completed"
+    ) || null;
   };
 
-  // Find all past order history for this table
+  // Find all past order history for this table (completed/paid/cancelled)
   const getTableOrderHistory = (tableId?: string) => {
     if (!tableId) return [];
-    return orders.filter((o) => o.tableId === tableId);
+    return orders.filter((o) => o.tableId === tableId && (o.paymentStatus === "paid" || o.status === "completed" || o.status === "cancelled"));
   };
 
   const handleStartOrder = (t: RestaurantTable) => {

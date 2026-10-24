@@ -84,6 +84,73 @@ export function mergeDuplicateTableOrders(ordersList: Order[]): {
   return { cleanedOrders, ordersToSync, ordersToDelete };
 }
 
+/**
+ * Automatically reconcile table occupancy with actual live orders.
+ * A table can ONLY be occupied if it has a genuine, live, unpaid order.
+ * If all orders for a table are paid, completed, or cancelled, the table is automatically freed to "available".
+ */
+export function reconcileTablesWithOrders(
+  tablesList: RestaurantTable[],
+  ordersList: Order[]
+): {
+  reconciledTables: RestaurantTable[];
+  changedTables: RestaurantTable[];
+} {
+  if (!tablesList || !Array.isArray(tablesList)) {
+    return { reconciledTables: [], changedTables: [] };
+  }
+
+  // Find all genuine live unpaid orders mapped by tableId
+  const activeUnpaidOrdersByTable = new Map<string, Order>();
+  (ordersList || []).forEach((o) => {
+    if (
+      o &&
+      o.tableId &&
+      o.paymentStatus === "unpaid" &&
+      o.status !== "cancelled" &&
+      o.status !== "completed"
+    ) {
+      activeUnpaidOrdersByTable.set(o.tableId, o);
+    }
+  });
+
+  const changedTables: RestaurantTable[] = [];
+
+  const reconciledTables = tablesList.map((t) => {
+    if (!t || !t.id) return t;
+    const activeOrder = activeUnpaidOrdersByTable.get(t.id);
+
+    if (activeOrder) {
+      // Table has an active unpaid bill: it must be occupied with that order ID!
+      if (t.status !== "occupied" || t.orderId !== activeOrder.id) {
+        const changed: RestaurantTable = {
+          ...t,
+          status: "occupied",
+          orderId: activeOrder.id,
+        };
+        changedTables.push(changed);
+        return changed;
+      }
+      return t;
+    } else {
+      // Table has NO live unpaid bill
+      // If table is erroneously marked occupied or has an old orderId, free it immediately!
+      if (t.status === "occupied" || t.orderId) {
+        const changed: RestaurantTable = {
+          ...t,
+          status: "available",
+          orderId: undefined,
+        };
+        changedTables.push(changed);
+        return changed;
+      }
+      return t;
+    }
+  });
+
+  return { reconciledTables, changedTables };
+}
+
 interface Store {
   cart: OrderItem[];
   tableId?: string | undefined;
@@ -160,7 +227,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
     });
     const mergedInitial = mergeDuplicateTableOrders(cleanOrders);
     setOrders(mergedInitial.cleanedOrders);
-    setTables(loadStored("res_pos_tables", mock.tables));
+
+    const storedTables = loadStored<RestaurantTable[]>("res_pos_tables", mock.tables);
+    const { reconciledTables: initTables, changedTables: initChanged } = reconcileTablesWithOrders(storedTables, mergedInitial.cleanedOrders);
+    setTables(initTables);
+    if (initChanged.length > 0) {
+      initChanged.forEach((ct) => syncTableToSupabase(ct));
+    }
     
     // Check if stored products are from the old catalog or version is missing/outdated
     const storedVer = typeof window !== "undefined" ? localStorage.getItem("res_pos_menu_ver") : null;
@@ -201,6 +274,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
       console.error("Failed to save tables to localStorage:", e);
     }
   }, [tables]);
+
+  // Auto-reconcile table statuses with actual live orders whenever orders change
+  useEffect(() => {
+    setTables((currentTables) => {
+      const { reconciledTables, changedTables } = reconcileTablesWithOrders(currentTables, orders);
+      if (changedTables.length > 0) {
+        changedTables.forEach((ct) => syncTableToSupabase(ct));
+        return reconciledTables;
+      }
+      return currentTables;
+    });
+  }, [orders]);
 
   useEffect(() => {
     try {
@@ -316,7 +401,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
                   map.set(rt.id, rt);
                 }
               });
-              return Array.from(map.values());
+              const merged = Array.from(map.values());
+              const { reconciledTables, changedTables } = reconcileTablesWithOrders(merged, orders);
+              if (changedTables.length > 0) {
+                changedTables.forEach((ct) => syncTableToSupabase(ct));
+              }
+              return reconciledTables;
             });
           }
         });
