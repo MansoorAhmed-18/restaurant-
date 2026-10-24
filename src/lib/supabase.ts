@@ -109,6 +109,7 @@ async function executeSyncOrderToSupabase(order: any): Promise<boolean> {
         name: item.name,
         price: item.price,
         qty: item.qty,
+        created_at: item.addedAt || undefined,
       }));
 
       const { error: itemsError } = await supabase.from("order_items").insert(lineItems);
@@ -171,12 +172,22 @@ export async function fetchOrdersFromSupabase() {
     }
 
     return ordersData.map((o: any) => {
-      const rawItems = (o.order_items || []).map((item: any) => ({
-        productId: item.product_id || "",
-        name: item.name || "Item",
-        price: Number(item.price || 0),
-        qty: Number(item.qty || 1),
-      }));
+      const orderCreatedTime = o.created_at ? new Date(o.created_at).getTime() : 0;
+
+      const rawItems = (o.order_items || []).map((item: any) => {
+        const itemCreatedTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+        // Detect if item was added later as an add-on (more than 45s after initial ticket created)
+        const isAddon = itemCreatedTime > 0 && orderCreatedTime > 0 && (itemCreatedTime - orderCreatedTime > 45000);
+
+        return {
+          productId: item.product_id || "",
+          name: item.name || "Item",
+          price: Number(item.price || 0),
+          qty: Number(item.qty || 1),
+          addedAt: item.created_at || undefined,
+          isAddon,
+        };
+      });
 
       const consolidated = consolidateOrderItems(rawItems);
       const orderTotal = Number(o.total || 0);

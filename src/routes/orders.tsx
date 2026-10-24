@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquare, Calendar, Clock, CheckCircle2, Lock, XCircle } from "lucide-react";
+import { MessageSquare, Calendar, Clock, CheckCircle2, Lock, XCircle, Bell, Volume2, VolumeX, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
@@ -11,6 +11,7 @@ import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
 import { getActiveStaff, isManager } from "@/lib/auth";
+import { playKitchenBellSound, isKitchenSoundMuted, setKitchenSoundMuted } from "@/lib/sound";
 
 export const Route = createFileRoute("/orders")({
   head: () => meta("Orders", "Active, completed and cancelled restaurant orders with details."),
@@ -35,8 +36,21 @@ function Orders() {
   const { orders, setOrderStatus, tables } = usePos();
   const [tab, setTab] = useState("active");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [soundMuted, setSoundMuted] = useState(isKitchenSoundMuted());
   const activeStaff = getActiveStaff();
   const isUserMgr = isManager(activeStaff);
+
+  const toggleSound = () => {
+    const next = !soundMuted;
+    setSoundMuted(next);
+    setKitchenSoundMuted(next);
+    if (!next) {
+      playKitchenBellSound();
+      toast.success("🛎️ Kitchen chime enabled! Test bell sounded.");
+    } else {
+      toast.info("Kitchen chime muted.");
+    }
+  };
 
   const handleCancelOrder = (orderId: string, orderNumber: number) => {
     if (!isManager()) {
@@ -55,12 +69,40 @@ function Orders() {
   return (
     <AppShell>
       <PageHeader title="Orders" subtitle="Track every ticket from kitchen to bill with live dates & times" />
-      <div className="mb-5 flex gap-2">
-        {tabs.map((x) => (
-          <button key={x.id} onClick={() => setTab(x.id)} className={cn("rounded-full border px-4 py-2 text-sm font-bold transition-all", tab === x.id ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-yellow-400/30" : "bg-card hover:border-primary")}>
-            {x.label} · {orders.filter((o) => x.match(o.status)).length}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((x) => (
+            <button key={x.id} onClick={() => setTab(x.id)} className={cn("rounded-full border px-4 py-2 text-sm font-bold transition-all", tab === x.id ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-yellow-400/30" : "bg-card hover:border-primary")}>
+              {x.label} · {orders.filter((o) => x.match(o.status)).length}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              playKitchenBellSound();
+              toast.success("🛎️ Ding-ding! Kitchen counter bell chime tested.");
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-xs font-bold text-primary transition-colors shadow-sm"
+            title="Test Kitchen Bell Sound"
+          >
+            <Bell className="size-3.5 text-primary animate-pulse" />
+            <span>Test Bell 🛎️</span>
           </button>
-        ))}
+          <button
+            onClick={toggleSound}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-bold transition-colors shadow-sm",
+              soundMuted
+                ? "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+            )}
+            title={soundMuted ? "Unmute Kitchen Notification Sound" : "Mute Kitchen Notification Sound"}
+          >
+            {soundMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5 text-emerald-600" />}
+            <span>Kitchen Chime: {soundMuted ? "MUTED" : "ON"}</span>
+          </button>
+        </div>
       </div>
       {list.length === 0 ? <EmptyState title={`No ${t.label.toLowerCase()} orders`} text="Orders will show up here as they come in." /> : (
         <div className="card-surface overflow-x-auto">
@@ -78,6 +120,7 @@ function Orders() {
             <tbody>
               {list.map((o) => {
                 const dt = formatOrderDateTime(o.createdAt);
+                const hasAddons = Boolean(o.items?.some((it) => it.isAddon));
                 return (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="p-4 font-extrabold text-foreground">
@@ -107,7 +150,16 @@ function Orders() {
                         "Takeaway"
                       )}
                     </td>
-                    <td className="p-4">{consolidateOrderItems(o.items).reduce((s, i) => s + i.qty, 0)} items</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span>{consolidateOrderItems(o.items).reduce((s, i) => s + i.qty, 0)} items</span>
+                        {hasAddons && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 border border-amber-500/30 animate-pulse">
+                            <Flame className="size-3 text-amber-600" /> +Add-on
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 font-black text-foreground">{inr(o.total)}</td>
                     <td className="p-4"><StatusBadge status={o.status} /></td>
                     <td className="p-4"><StatusBadge status={o.paymentStatus} /></td>
@@ -127,6 +179,8 @@ function Orders() {
         <SheetContent className="overflow-y-auto">
           {sel && (() => {
             const dt = formatOrderDateTime(sel.createdAt);
+            const consolidated = consolidateOrderItems(sel.items);
+            const addonItems = consolidated.filter((it) => it.isAddon);
             return (
               <>
                 <SheetHeader>
@@ -157,6 +211,19 @@ function Orders() {
                     )}
                   </div>
 
+                  {/* Kitchen Alert Banner if add-ons exist */}
+                  {addonItems.length > 0 && (
+                    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-1">
+                      <div className="flex items-center gap-2 text-xs font-black text-amber-700 dark:text-amber-400">
+                        <Flame className="size-4 text-amber-600 animate-bounce" />
+                        <span>KITCHEN NOTICE: {addonItems.reduce((s, it) => s + it.qty, 0)} NEW FOOD ITEM(S) ADDED</span>
+                      </div>
+                      <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 font-medium">
+                        Chef: Prepare the newly added items highlighted in orange below. Previous round items are already cooked.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="text-sm text-muted-foreground flex items-center gap-1.5">
                     {sel.tableId ? (
                       <Link 
@@ -171,8 +238,56 @@ function Orders() {
                     )}
                     <span>· Walk-in Guest</span>
                   </div>
+
+                  {/* Chef ticket items list with clear round/add-on indicators */}
                   <ul className="space-y-2 border-y py-3 text-sm">
-                    {consolidateOrderItems(sel.items).map((i, idx) => <li key={`${i.productId || i.name}-${idx}`} className="flex justify-between"><span>{i.qty} × {i.name}</span><span className="font-semibold">{inr(i.qty * i.price)}</span></li>)}
+                    {consolidated.map((i, idx) => {
+                      const isNew = Boolean(i.isAddon);
+                      return (
+                        <li 
+                          key={`${i.productId || i.name}-${idx}`} 
+                          className={cn(
+                            "flex items-center justify-between p-2 rounded-xl transition-all",
+                            isNew 
+                              ? "bg-amber-500/15 border border-amber-500/40 text-amber-950 dark:text-amber-100" 
+                              : "bg-muted/20 hover:bg-muted/40"
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span 
+                              className={cn(
+                                "size-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0",
+                                isNew 
+                                  ? "bg-amber-500 text-white shadow-sm ring-2 ring-amber-400/40" 
+                                  : "bg-muted text-foreground"
+                              )}
+                            >
+                              {i.qty}×
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-foreground">{i.name}</span>
+                                {isNew && (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-600 text-white shadow-xs">
+                                    <Flame className="size-3" /> NEW ADD-ON
+                                  </span>
+                                )}
+                              </div>
+                              {isNew ? (
+                                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold">
+                                  🔥 Prepare Now · Added after initial order
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground font-medium">
+                                  Initial Round Order
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-black text-foreground shrink-0">{inr(i.qty * i.price)}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{inr(sel.subtotal)}</span></div>

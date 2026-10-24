@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as mock from "./mock-data";
 import { 
   supabase, syncOrderToSupabase, syncCustomerToSupabase, 
@@ -9,6 +9,7 @@ import {
 } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 import { consolidateOrderItems } from "./utils";
+import { playKitchenBellSound } from "./sound";
 
 /**
  * Auto-merge multiple unpaid orders for the same table into a single unified bill.
@@ -133,6 +134,10 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(mock.products);
   const [customers, setCustomers] = useState<Customer[]>(mock.customers);
 
+  // Audio & kitchen notification tracking refs
+  const previousOrderCountsRef = useRef<Map<string, number>>(new Map());
+  const isInitialOrdersLoadedRef = useRef<boolean>(false);
+
   // Client-side hydration from localStorage after mount
   useEffect(() => {
     const rawStoredOrders = loadStored<Order[]>("res_pos_orders", []);
@@ -205,6 +210,35 @@ export function PosProvider({ children }: { children: ReactNode }) {
       if (isSupabaseConfigured) {
         fetchOrdersFromSupabase().then((remoteOrders) => {
           if (isMounted && remoteOrders && Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+            // Check for new incoming orders or added food items to trigger kitchen bell chime
+            const currentCounts = new Map<string, number>();
+            remoteOrders.forEach((ro) => {
+              if (ro && ro.id && ro.status !== "cancelled") {
+                const totalItems = (ro.items || []).reduce((sum, item) => sum + (item.qty || 1), 0);
+                currentCounts.set(ro.id, totalItems);
+              }
+            });
+
+            if (isInitialOrdersLoadedRef.current) {
+              let detectedNewFood = false;
+              for (const [orderId, count] of currentCounts.entries()) {
+                const prev = previousOrderCountsRef.current.get(orderId);
+                if (prev === undefined) {
+                  detectedNewFood = true;
+                  break;
+                } else if (count > prev) {
+                  detectedNewFood = true;
+                  break;
+                }
+              }
+              if (detectedNewFood) {
+                playKitchenBellSound();
+              }
+            } else {
+              isInitialOrdersLoadedRef.current = true;
+            }
+            previousOrderCountsRef.current = currentCounts;
+
             setOrders((localOrders) => {
               const map = new Map<string, Order>();
               (localOrders || []).forEach((lo) => {
@@ -290,6 +324,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
       channel = supabase
         .channel("pos-ledger-realtime")
         .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+          loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
           loadData();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
@@ -382,10 +419,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
         : null;
 
       if (existingTableOrder) {
+        // Tag newly added food items with isAddon: true & current timestamp
+        const nowIso = new Date().toISOString();
+        const taggedNewItems = consolidatedItems.map((item) => ({
+          ...item,
+          isAddon: true,
+          addedAt: nowIso,
+        }));
+
         // APPEND TO EXISTING BILL: Combine items into existing order and keep same order #
         const combinedItems = consolidateOrderItems([
           ...(existingTableOrder.items || []),
-          ...consolidatedItems,
+          ...taggedNewItems,
         ]);
         const subtotal = combinedItems.reduce((s, i) => s + i.price * i.qty, 0);
         const tax = 0;
@@ -404,6 +449,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
         };
 
         setOrders((os) => os.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+
+        // Update tracking ref so remote echo doesn't double-chime
+        const newTotalCount = combinedItems.reduce((s, i) => s + (i.qty || 1), 0);
+        previousOrderCountsRef.current.set(updatedOrder.id, newTotalCount);
+
+        // Sound authentic kitchen bell chime immediately! 🛎️
+        playKitchenBellSound();
 
         if (tableId) {
           setTables((ts) => {
@@ -469,6 +521,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
         type: tableId ? "dine-in" : "takeaway",
       };
       setOrders((os) => [o, ...os]);
+
+      // Update tracking ref so remote echo doesn't double-chime
+      const newTotalCount = consolidatedItems.reduce((s, i) => s + (i.qty || 1), 0);
+      previousOrderCountsRef.current.set(o.id, newTotalCount);
+
+      // Sound authentic kitchen bell chime immediately! 🛎️
+      playKitchenBellSound();
       if (tableId) {
         setTables((ts) => {
           const updated = ts.map((t) =>

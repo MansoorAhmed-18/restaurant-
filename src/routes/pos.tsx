@@ -59,9 +59,9 @@ export function Pos() {
       const o = pos.placeOrder();
       if (!o) return;
       if (hadExistingOrder) {
-        toast.success(`Dishes added to Bill #${o.number}! Everything merged into one bill.`);
+        toast.success(`🛎️ Dishes added to Bill #${o.number}! Kitchen alerted with bell sound.`);
       } else {
-        toast.success(`Bill #${o.number} created & sent to kitchen!`);
+        toast.success(`🛎️ Bill #${o.number} created & kitchen bell sounded!`);
       }
     }
   };

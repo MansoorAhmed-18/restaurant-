@@ -18,6 +18,9 @@ export function consolidateOrderItems(items: OrderItem[]): OrderItem[] {
     const existing = map.get(key);
     if (existing) {
       existing.qty += Number(item.qty || 1);
+      if (item.isAddon) existing.isAddon = true;
+      if (item.addedAt && !existing.addedAt) existing.addedAt = item.addedAt;
+      if (item.round && item.round > (existing.round || 1)) existing.round = item.round;
     } else {
       map.set(key, { ...item, qty: Number(item.qty || 1) });
     }

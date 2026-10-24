@@ -13,7 +13,16 @@ export interface Customer { id: ID; name: string; phone?: string | undefined; em
 export type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 export type PaymentStatus = "paid" | "unpaid" | "refunded";
 export type PaymentMethod = "cash" | "upi";
-export interface OrderItem { productId: ID; name: string; price: number; qty: number }
+export interface OrderItem { 
+  productId: ID; 
+  name: string; 
+  price: number; 
+  qty: number;
+  addedAt?: string | undefined;
+  createdAt?: string | undefined;
+  isAddon?: boolean | undefined;
+  round?: number | undefined;
+}
 export interface Order {
   id: ID; number: number; tableId?: ID | undefined; customerId?: ID | undefined; items: OrderItem[];
   subtotal: number; tax: number; total: number; status: OrderStatus;
