@@ -302,10 +302,15 @@ function Orders() {
                   </div>
                   <div className="grid gap-2">
                     {sel.status === "pending" && <button onClick={() => setOrderStatus(sel.id, "preparing")} className="h-10 rounded-xl bg-info text-sm font-bold text-primary-foreground">Mark preparing</button>}
-                    {sel.paymentStatus === "unpaid" && isUserMgr && (
+                    {sel.paymentStatus === "unpaid" && sel.status !== "cancelled" && isUserMgr && (
                       <Link to="/payments" search={{ order: sel.id }} className="grid h-10 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow">
                         Collect payment
                       </Link>
+                    )}
+                    {sel.status === "cancelled" && (
+                      <div className="flex h-10 items-center justify-center gap-2 rounded-xl bg-destructive/10 text-xs font-black text-destructive border border-destructive/20">
+                        <XCircle className="size-4" /> Cancelled Order — Non-Collectible
+                      </div>
                     )}
                     {sel.paymentStatus === "paid" && (
                       <div className="space-y-2">

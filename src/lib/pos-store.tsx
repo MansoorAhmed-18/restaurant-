@@ -693,10 +693,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
       return o;
     },
     payOrder: (id, method) => {
+      const target = orders.find((o) => o.id === id);
+      if (target?.status === "cancelled") {
+        toast.error("Cancelled order cannot be collected by anyone.");
+        return;
+      }
       let updatedOrder: Order | null = null;
       setOrders((os) => os.map((o) => {
         if (o.id === id) {
-          updatedOrder = { ...o, paymentStatus: "paid", paymentMethod: method, status: o.status === "cancelled" ? o.status : "completed" };
+          updatedOrder = { ...o, paymentStatus: "paid", paymentMethod: method, status: "completed" };
           return updatedOrder;
         }
         return o;

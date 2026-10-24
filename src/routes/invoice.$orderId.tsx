@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Printer, MessageSquare, Send } from "lucide-react";
+import { CheckCircle2, Printer, MessageSquare, Send, Clock, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -8,7 +8,7 @@ import { inr } from "@/lib/api";
 import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
-import { consolidateOrderItems } from "@/lib/utils";
+import { consolidateOrderItems, cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/invoice/$orderId")({
   head: () => meta("Invoice", "Printable bill receipt for a paid restaurant order."),
@@ -38,18 +38,31 @@ function Invoice() {
     );
   }
 
+  const isPaid = o.paymentStatus === "paid";
+  const isCancelled = o.status === "cancelled";
+
   const handleSendWhatsApp = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     sendWhatsAppBill(o, phoneInput);
-    toast.success("Opening WhatsApp with digital receipt!");
+    toast.success("Opening WhatsApp with digital bill!");
   };
 
   return (
     <AppShell>
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 font-bold text-emerald-600">
-          <CheckCircle2 className="size-5" /> Payment Successful ({o.paymentMethod?.toUpperCase() || "PAID"})
-        </div>
+        {isCancelled ? (
+          <div className="flex items-center gap-2 font-bold text-destructive">
+            <XCircle className="size-5" /> Order Cancelled (Void)
+          </div>
+        ) : isPaid ? (
+          <div className="flex items-center gap-2 font-bold text-emerald-600">
+            <CheckCircle2 className="size-5" /> Payment Successful ({o.paymentMethod?.toUpperCase() || "PAID"})
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 font-bold text-amber-600">
+            <Clock className="size-5" /> Active Dining Table Bill (Payment Pending)
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           <Link to="/pos" className="rounded-xl border bg-card px-4 py-2.5 text-sm font-bold">
             + New Order
@@ -58,15 +71,15 @@ function Invoice() {
             onClick={() => window.print()}
             className="flex items-center gap-2 rounded-xl bg-muted px-4 py-2.5 text-sm font-bold text-foreground hover:bg-muted/80 transition-colors"
           >
-            <Printer className="size-4" /> Print Thermal Receipt
+            <Printer className="size-4" /> {isPaid ? "Print Thermal Receipt" : "Print Food Bill"}
           </button>
         </div>
       </div>
 
-      {/* WhatsApp Manager Sharing Action Bar */}
+      {/* WhatsApp Sharing Action Bar */}
       <div className="no-print mx-auto max-w-lg mb-6 rounded-2xl border bg-emerald-500/10 border-emerald-500/30 p-4 space-y-2 shadow-sm">
         <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-extrabold text-sm">
-          <MessageSquare className="size-4 text-emerald-600" /> Send Bill Receipt to Customer WhatsApp
+          <MessageSquare className="size-4 text-emerald-600" /> {isPaid ? "Send Receipt to Customer WhatsApp" : "Send Food Bill to Customer WhatsApp"}
         </div>
         <form onSubmit={handleSendWhatsApp} className="flex gap-2">
           <input
@@ -104,8 +117,8 @@ function Invoice() {
           <div className="text-xs text-muted-foreground mt-0.5">7, Masthan Sahib Street, Nehru Nagar, Pallavaram, Chennai</div>
         </div>
         <div className="my-5 grid grid-cols-2 gap-y-1.5 border-y border-dashed py-3.5 text-xs">
-          <span className="text-muted-foreground font-semibold">Invoice No</span>
-          <span className="text-right font-extrabold text-foreground">INV-{o.number}</span>
+          <span className="text-muted-foreground font-semibold">{isPaid ? "Invoice No" : "Bill No"}</span>
+          <span className="text-right font-extrabold text-foreground">{isPaid ? `INV-${o.number}` : `BILL-${o.number}`}</span>
           <span className="text-muted-foreground font-semibold">Bill Date</span>
           <span className="text-right font-bold text-foreground">
             {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
@@ -119,7 +132,16 @@ function Invoice() {
           <span className="text-muted-foreground font-semibold">Customer</span>
           <span className="text-right font-medium">Walk-in Customer</span>
           <span className="text-muted-foreground font-semibold">Payment Status</span>
-          <span className="text-right uppercase font-black text-emerald-600">PAID via {o.paymentMethod ?? "UPI"}</span>
+          <span className={cn(
+            "text-right uppercase font-black",
+            isPaid ? "text-emerald-600" : isCancelled ? "text-destructive" : "text-amber-600"
+          )}>
+            {isCancelled 
+              ? "CANCELLED (VOID)" 
+              : isPaid 
+              ? `PAID via ${o.paymentMethod?.toUpperCase() || "CASH"}` 
+              : "UNPAID (Pending Settle)"}
+          </span>
         </div>
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">
@@ -152,10 +174,15 @@ function Invoice() {
             <span>{inr(o.tax)}</span>
           </div>
           <div className="flex justify-between border-t pt-2 text-lg font-extrabold">
-            <span>Total Paid</span>
+            <span>{isPaid ? "Total Paid" : "Total Payable"}</span>
             <span className="text-primary">{inr(o.total)}</span>
           </div>
         </div>
+        {!isPaid && !isCancelled && (
+          <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/25 p-2.5 text-center text-xs font-bold text-amber-700 dark:text-amber-300">
+            ⏳ Payment Pending · Please settle with Manager or Cashier
+          </div>
+        )}
         <p className="mt-6 text-center text-xs text-muted-foreground font-medium">Thank you for dining at Meat Theory! 🔥🥩</p>
       </div>
     </AppShell>

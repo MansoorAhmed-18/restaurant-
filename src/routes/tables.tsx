@@ -689,7 +689,7 @@ function Tables() {
                           >
                             <Plus className="size-4" /> Add Food Items
                           </button>
-                          {activeOrder.paymentStatus === "unpaid" ? (
+                          {activeOrder.paymentStatus === "unpaid" && activeOrder.status !== "cancelled" ? (
                             isUserMgr ? (
                               <Link
                                 to="/payments"
@@ -719,7 +719,7 @@ function Tables() {
                               params={{ orderId: activeOrder.id }}
                               className="flex items-center justify-center gap-1 rounded-xl border bg-card py-2 text-xs font-bold text-foreground hover:bg-muted"
                             >
-                              <Receipt className="size-3.5" /> View Receipt
+                              <Receipt className="size-3.5" /> View Bill
                             </Link>
                           )}
                           <button

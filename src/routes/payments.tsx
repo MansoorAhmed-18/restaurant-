@@ -40,10 +40,14 @@ function Payments() {
   const [selId, setSelId] = useState(order ?? unpaid[0]?.id);
   const [method, setMethod] = useState<PaymentMethod>("upi");
   const [busy, setBusy] = useState(false);
-  const sel = orders.find((o) => o.id === selId && o.paymentStatus === "unpaid");
+  const sel = orders.find((o) => o.id === selId && o.paymentStatus === "unpaid" && o.status !== "cancelled");
 
   const confirm = () => {
     if (!sel) return;
+    if (sel.status === "cancelled") {
+      toast.error("Cancelled orders cannot be collected by anyone, including managers.");
+      return;
+    }
     if (!isUserMgr) {
       toast.error("Access denied: Only Managers can collect payment.");
       return;
@@ -89,12 +93,30 @@ function Payments() {
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground"><tr className="border-b"><th className="p-4">Order</th><th className="p-4">Amount</th><th className="p-4">Method</th><th className="p-4">Status</th></tr></thead>
             <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} onClick={() => o.paymentStatus === "unpaid" && o.status !== "cancelled" && setSelId(o.id)} className={cn("border-b last:border-0", o.paymentStatus === "unpaid" && "cursor-pointer hover:bg-muted/50", sel?.id === o.id && "bg-primary-soft")}>
-                  <td className="p-4 font-extrabold">#{o.number}</td><td className="p-4 font-semibold">{inr(o.total)}</td>
-                  <td className="p-4 uppercase text-muted-foreground">{o.paymentMethod ?? "—"}</td><td className="p-4"><StatusBadge status={o.paymentStatus} /></td>
-                </tr>
-              ))}
+              {orders.map((o) => {
+                const isCancelled = o.status === "cancelled";
+                const isSelectable = o.paymentStatus === "unpaid" && !isCancelled;
+                return (
+                  <tr 
+                    key={o.id} 
+                    onClick={() => isSelectable && setSelId(o.id)} 
+                    className={cn(
+                      "border-b last:border-0 transition-colors", 
+                      isSelectable && "cursor-pointer hover:bg-muted/50", 
+                      isCancelled && "opacity-50 bg-muted/20 cursor-not-allowed",
+                      sel?.id === o.id && "bg-primary-soft"
+                    )}
+                  >
+                    <td className="p-4 font-extrabold flex items-center gap-1.5">
+                      <span>#{o.number}</span>
+                      {isCancelled && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/20">Cancelled</span>}
+                    </td>
+                    <td className="p-4 font-semibold">{inr(o.total)}</td>
+                    <td className="p-4 uppercase text-muted-foreground">{isCancelled ? "VOID" : (o.paymentMethod ?? "—")}</td>
+                    <td className="p-4"><StatusBadge status={isCancelled ? "cancelled" : o.paymentStatus} /></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -8,25 +8,36 @@ export function buildWhatsAppBillText(order: Order, customerName?: string): stri
   const dateStr = `${dateFormatted} at ${timeFormatted}`;
 
 
+  const isPaid = order.paymentStatus === "paid";
+  const isCancelled = order.status === "cancelled";
+
   const consolidated = consolidateOrderItems(order.items || []);
   const itemsText = consolidated
     .map((i) => `  • ${i.name} x${i.qty} — ₹${i.price * i.qty}`)
     .join("\n");
 
-  return `🧾 *MEAT THEORY - OFFICIAL RECEIPT* 🧾
+  const title = isPaid ? "🧾 *MEAT THEORY - OFFICIAL RECEIPT* 🧾" : "🧾 *MEAT THEORY - FOOD BILL* 🧾";
+  const paymentLine = isCancelled 
+    ? "*Status:* CANCELLED (VOID)" 
+    : isPaid 
+    ? `*Payment Method:* ${(order.paymentMethod || "CASH").toUpperCase()} (PAID)` 
+    : "*Payment Status:* UNPAID (Pending Payment)";
+  const totalLine = isPaid ? `*TOTAL AMOUNT PAID:* ₹${order.total}` : `*TOTAL PAYABLE:* ₹${order.total}`;
+
+  return `${title}
 🔥 *TESTED • CRAFTED • SERVED* 🔥
 
 Hello! Thank you for dining with us at Meat Theory.
 
-*Invoice No:* INV-${order.number}
+*${isPaid ? "Invoice No:" : "Bill No:"}* ${isPaid ? "INV-" : "BILL-"}${order.number}
 *Date:* ${dateStr}
-*Payment Method:* ${(order.paymentMethod || "PAID").toUpperCase()}
+${paymentLine}
 
 *ITEMS ORDERED:*
 ${itemsText}
 
 ---------------------------------
-*TOTAL AMOUNT PAID:* ₹${order.total}
+${totalLine}
 ---------------------------------
 
 Thank you for visiting Meat Theory! 🔥🥩
