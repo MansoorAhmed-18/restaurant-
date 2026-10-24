@@ -441,6 +441,25 @@ export async function deleteTableFromSupabase(tableId: string) {
   }
 }
 
+/**
+ * Delete an order and its items from Supabase database
+ */
+export async function deleteOrderFromSupabase(orderId: string) {
+  if (!supabase || !orderId) return false;
+  try {
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    const { error } = await supabase.from("orders").delete().eq("id", orderId);
+    if (error) {
+      console.error("Failed to delete order from Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Delete order exception:", err);
+    return false;
+  }
+}
+
 
 /**
  * Fetch all registered staff & cashier accounts from Supabase database

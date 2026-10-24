@@ -4,10 +4,84 @@ import {
   supabase, syncOrderToSupabase, syncCustomerToSupabase, 
   fetchOrdersFromSupabase, fetchProductsFromSupabase, fetchTablesFromSupabase,
   syncTableToSupabase, syncAllTablesToSupabase, deleteTableFromSupabase,
+  deleteOrderFromSupabase,
   isSupabaseConfigured 
 } from "./supabase";
 import type { Customer, Order, OrderItem, OrderStatus, PaymentMethod, Product, RestaurantTable } from "./types";
 import { consolidateOrderItems } from "./utils";
+
+/**
+ * Auto-merge multiple unpaid orders for the same table into a single unified bill.
+ * Preserves the original order number, combines all items, and deletes secondary order duplicates.
+ */
+export function mergeDuplicateTableOrders(ordersList: Order[]): {
+  cleanedOrders: Order[];
+  ordersToSync: Order[];
+  ordersToDelete: string[];
+} {
+  if (!ordersList || !Array.isArray(ordersList)) {
+    return { cleanedOrders: [], ordersToSync: [], ordersToDelete: [] };
+  }
+
+  const tableUnpaidMap = new Map<string, Order[]>();
+  const ordersToSync: Order[] = [];
+  const ordersToDelete: string[] = [];
+
+  // Group unpaid dine-in orders by tableId
+  ordersList.forEach((o) => {
+    if (o && o.tableId && o.paymentStatus === "unpaid" && o.status !== "cancelled") {
+      const arr = tableUnpaidMap.get(o.tableId) || [];
+      arr.push(o);
+      tableUnpaidMap.set(o.tableId, arr);
+    }
+  });
+
+  const idsToRemove = new Set<string>();
+
+  tableUnpaidMap.forEach((tableOrders) => {
+    if (tableOrders.length > 1) {
+      // Sort so earliest order is first (lowest number or earliest createdAt)
+      tableOrders.sort((a, b) => {
+        const numDiff = (a.number || 0) - (b.number || 0);
+        if (numDiff !== 0) return numDiff;
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      });
+
+      const primary = { ...tableOrders[0] };
+      const others = tableOrders.slice(1);
+
+      // Collect all items from primary and other duplicates
+      const allItems = [...(primary.items || [])];
+      others.forEach((other) => {
+        if (other.items && Array.isArray(other.items)) {
+          allItems.push(...other.items);
+        }
+        idsToRemove.add(other.id);
+        ordersToDelete.push(other.id);
+      });
+
+      const consolidated = consolidateOrderItems(allItems);
+      const subtotal = consolidated.reduce((sum, i) => sum + i.price * i.qty, 0);
+      const total = subtotal;
+
+      primary.items = consolidated;
+      primary.subtotal = subtotal;
+      primary.tax = 0;
+      primary.total = total;
+
+      ordersToSync.push(primary);
+    }
+  });
+
+  const cleanedOrders = ordersList
+    .filter((o) => !idsToRemove.has(o.id))
+    .map((o) => {
+      const synced = ordersToSync.find((s) => s.id === o.id);
+      return synced || o;
+    });
+
+  return { cleanedOrders, ordersToSync, ordersToDelete };
+}
 
 interface Store {
   cart: OrderItem[];
@@ -71,7 +145,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
       );
       return !isLegacyId && !isOldDate && !hasOldDishes;
     });
-    setOrders(cleanOrders);
+    const mergedInitial = mergeDuplicateTableOrders(cleanOrders);
+    setOrders(mergedInitial.cleanedOrders);
     setTables(loadStored("res_pos_tables", mock.tables));
     
     // Check if stored products are from the old catalog or version is missing/outdated
@@ -144,11 +219,19 @@ export function PosProvider({ children }: { children: ReactNode }) {
                   const merged = { ...ro, paymentStatus: "paid" as const, paymentMethod: local.paymentMethod || ro.paymentMethod, status: "completed" as const };
                   map.set(ro.id, merged);
                   syncOrderToSupabase(merged);
+                } else if (local && local.items && local.items.length > 0 && (!ro.items || ro.items.length === 0)) {
+                  map.set(ro.id, { ...ro, items: local.items });
                 } else {
                   map.set(ro.id, ro);
                 }
               });
-              return Array.from(map.values()).sort((a, b) => {
+
+              // Auto-merge duplicate active unpaid orders for the same table
+              const mergedRemote = mergeDuplicateTableOrders(Array.from(map.values()));
+              mergedRemote.ordersToDelete.forEach((delId) => deleteOrderFromSupabase(delId));
+              mergedRemote.ordersToSync.forEach((syncOrd) => syncOrderToSupabase(syncOrd));
+
+              return mergedRemote.cleanedOrders.sort((a, b) => {
                 const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() || 0 : 0;
                 const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() || 0 : 0;
                 return timeB - timeA;
@@ -291,11 +374,85 @@ export function PosProvider({ children }: { children: ReactNode }) {
     placeOrder: (paidWithMethod?: PaymentMethod) => {
       if (!cart.length) return null;
       const consolidatedItems = consolidateOrderItems(cart);
+      const isPaidDirectly = Boolean(paidWithMethod);
+
+      // Check if this table already has an active unpaid order (Dine-in add-on flow)
+      const existingTableOrder = tableId
+        ? orders.find((o) => o.tableId === tableId && o.paymentStatus === "unpaid" && o.status !== "cancelled")
+        : null;
+
+      if (existingTableOrder) {
+        // APPEND TO EXISTING BILL: Combine items into existing order and keep same order #
+        const combinedItems = consolidateOrderItems([
+          ...(existingTableOrder.items || []),
+          ...consolidatedItems,
+        ]);
+        const subtotal = combinedItems.reduce((s, i) => s + i.price * i.qty, 0);
+        const tax = 0;
+        const total = subtotal + tax;
+
+        const updatedOrder: Order = {
+          ...existingTableOrder,
+          items: combinedItems,
+          subtotal,
+          tax,
+          total,
+          customerId: customerId || existingTableOrder.customerId,
+          status: isPaidDirectly ? "completed" : (existingTableOrder.status === "completed" ? "completed" : "preparing"),
+          paymentStatus: isPaidDirectly ? "paid" : "unpaid",
+          paymentMethod: isPaidDirectly ? paidWithMethod : existingTableOrder.paymentMethod,
+        };
+
+        setOrders((os) => os.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+
+        if (tableId) {
+          setTables((ts) => {
+            const updated = ts.map((t) =>
+              t.id === tableId
+                ? {
+                    ...t,
+                    status: isPaidDirectly ? ("available" as const) : ("occupied" as const),
+                    orderId: isPaidDirectly ? undefined : updatedOrder.id,
+                  }
+                : t
+            );
+            const changed = updated.find((t) => t.id === tableId);
+            if (changed) syncTableToSupabase(changed);
+            return updated;
+          });
+        }
+
+        if (isPaidDirectly && updatedOrder.customerId) {
+          setCustomers((cs) =>
+            cs.map((c) => {
+              if (c.id === updatedOrder.customerId) {
+                const updatedCustomer = {
+                  ...c,
+                  visits: c.visits + 1,
+                  totalSpent: c.totalSpent + updatedOrder.total,
+                  lastVisit: new Date().toISOString(),
+                };
+                syncCustomerToSupabase(updatedCustomer);
+                return updatedCustomer;
+              }
+              return c;
+            })
+          );
+        }
+
+        setCart([]);
+        setTableId(undefined);
+        setCustomerId(undefined);
+
+        syncOrderToSupabase(updatedOrder);
+        return updatedOrder;
+      }
+
+      // Brand new order
       const subtotal = consolidatedItems.reduce((s, i) => s + i.price * i.qty, 0);
       const tax = 0;
       const total = subtotal + tax;
       const number = Math.max(...orders.map((o) => o.number), 1000) + 1;
-      const isPaidDirectly = Boolean(paidWithMethod);
       const o: Order = {
         id: `o${number}`,
         number,
@@ -316,7 +473,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         setTables((ts) => {
           const updated = ts.map((t) =>
             t.id === tableId
-              ? { ...t, status: "occupied" as const, orderId: o.id }
+              ? { ...t, status: isPaidDirectly ? ("available" as const) : ("occupied" as const), orderId: isPaidDirectly ? undefined : o.id }
               : t
           );
           const changed = updated.find((t) => t.id === tableId);

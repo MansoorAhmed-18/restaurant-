@@ -44,14 +44,25 @@ export function Pos() {
 
   const qtyOf = (id: string) => pos.cart.find((c) => c.productId === id)?.qty ?? 0;
 
+  const curTable = pos.tableId ? pos.tables.find((t) => t.id === pos.tableId) : null;
+  const curActiveOrder = curTable 
+    ? pos.orders.find((o) => o.tableId === curTable.id && o.paymentStatus === "unpaid" && o.status !== "cancelled")
+    : null;
+  const finalPayableTotal = curActiveOrder ? (curActiveOrder.total + pos.totals.total) : pos.totals.total;
+
   const handlePlaceOrder = (payNow: boolean) => {
     if (pos.cart.length === 0) return;
     if (payNow) {
       setPayModalOpen(true);
     } else {
+      const hadExistingOrder = Boolean(curActiveOrder);
       const o = pos.placeOrder();
       if (!o) return;
-      toast.success(`Bill #${o.number} created & sent to kitchen!`);
+      if (hadExistingOrder) {
+        toast.success(`Dishes added to Bill #${o.number}! Everything merged into one bill.`);
+      } else {
+        toast.success(`Bill #${o.number} created & sent to kitchen!`);
+      }
     }
   };
 
@@ -67,7 +78,7 @@ export function Pos() {
   };
 
   const cashGivenNum = parseFloat(cashTendered) || 0;
-  const changeDue = Math.max(0, cashGivenNum - pos.totals.total);
+  const changeDue = Math.max(0, cashGivenNum - finalPayableTotal);
 
   return (
     <AppShell>
@@ -238,57 +249,56 @@ export function Pos() {
               </button>
             </div>
 
-            {pos.tableId && (() => {
-              const curTable = pos.tables.find((t) => t.id === pos.tableId);
-              const curActiveOrder = curTable 
-                ? pos.orders.find((o) => o.tableId === curTable.id && o.paymentStatus === "unpaid" && o.status !== "cancelled")
-                : null;
-              return (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-muted-foreground">Table:</span>
-                      <select
-                        value={pos.tableId}
-                        onChange={(e) => pos.setTableId(e.target.value)}
-                        className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
-                      >
-                        {pos.tables.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to="/tables"
-                        search={{ tableId: pos.tableId }}
-                        className="text-[11px] text-primary hover:underline font-bold"
-                      >
-                        Table Details 🪑
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => pos.setTableId(undefined)}
-                        className="text-[11px] text-muted-foreground hover:text-destructive font-bold underline"
-                      >
-                        Clear
-                      </button>
-                    </div>
+            {pos.tableId && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-muted-foreground">Table:</span>
+                    <select
+                      value={pos.tableId}
+                      onChange={(e) => pos.setTableId(e.target.value)}
+                      className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
+                    >
+                      {pos.tables.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/tables"
+                      search={{ tableId: pos.tableId }}
+                      className="text-[11px] text-primary hover:underline font-bold"
+                    >
+                      Table Details 🪑
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => pos.setTableId(undefined)}
+                      className="text-[11px] text-muted-foreground hover:text-destructive font-bold underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
 
-                  {curActiveOrder && (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] font-bold text-primary flex items-center justify-between">
-                      <span>Dining in progress: Bill #{curActiveOrder.number} ({curActiveOrder.items.length} items)</span>
+                {curActiveOrder && (
+                  <div className="rounded-xl border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary space-y-1">
+                    <div className="flex items-center justify-between font-black">
+                      <span>Running Bill #{curActiveOrder.number} ({curActiveOrder.items.length} dishes · {inr(curActiveOrder.total)})</span>
                       <Link to="/invoice/$orderId" params={{ orderId: curActiveOrder.id }} className="underline">
                         View
                       </Link>
                     </div>
-                  )}
-                </div>
-              );
-            })()}
+                    <div className="text-[11px] text-muted-foreground font-semibold">
+                      New dishes added will be merged into this same bill.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {pos.cart.length === 0 ? (
@@ -317,15 +327,31 @@ export function Pos() {
                 ))}
               </ul>
 
-              {/* Total Summary - GST removed */}
-              <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-yellow-400/10 border border-primary/25 p-4 space-y-1.5 shadow-sm">
+              {/* Total Summary */}
+              <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-yellow-400/10 border border-primary/25 p-4 space-y-2 shadow-sm">
                 <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  <span>Total Payable</span>
+                  <span>{curActiveOrder ? "Bill Summary (Running + Added)" : "Total Payable"}</span>
                   <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-purple-950 font-black text-[10px] shadow-sm">NET PAYABLE</span>
                 </div>
-                <div className="flex justify-between items-baseline pt-1">
-                  <span className="text-xs text-muted-foreground font-semibold">Total to Collect:</span>
-                  <span className="text-primary text-2xl font-black font-mono">{inr(pos.totals.total)}</span>
+                {curActiveOrder && (
+                  <div className="text-xs space-y-1 text-muted-foreground border-b border-primary/15 pb-2">
+                    <div className="flex justify-between">
+                      <span>Existing Bill #{curActiveOrder.number}:</span>
+                      <span className="font-mono font-bold text-foreground">{inr(curActiveOrder.total)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Added New Items ({pos.totals.count}):</span>
+                      <span className="font-mono font-bold text-primary">+{inr(pos.totals.total)}</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-baseline pt-0.5">
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    {curActiveOrder ? "Combined Total to Settle:" : "Total to Collect:"}
+                  </span>
+                  <span className="text-primary text-2xl font-black font-mono">
+                    {inr(finalPayableTotal)}
+                  </span>
                 </div>
               </div>
 
@@ -335,13 +361,13 @@ export function Pos() {
                   onClick={() => handlePlaceOrder(false)} 
                   className="h-11 rounded-xl border-2 border-primary text-xs font-extrabold text-primary hover:bg-primary/10 transition-colors"
                 >
-                  Kitchen Ticket
+                  {curActiveOrder ? `+ Add to Bill #${curActiveOrder.number}` : "Kitchen Ticket"}
                 </button>
                 <button 
                   onClick={() => handlePlaceOrder(true)} 
                   className="h-11 rounded-xl bg-gradient-to-r from-primary to-purple-800 text-xs font-black text-white shadow-[var(--shadow-lift)] hover:opacity-95 transition-all flex items-center justify-center gap-1.5 ring-1 ring-yellow-400/40"
                 >
-                  <span className="text-yellow-300">⚡</span> Pay & Print 🧾
+                  <span className="text-yellow-300">⚡</span> {curActiveOrder ? "Pay Full Bill 🧾" : "Pay & Print 🧾"}
                 </button>
               </div>
             </>
@@ -363,8 +389,15 @@ export function Pos() {
 
             {/* Total Amount Display */}
             <div className="rounded-2xl bg-primary/10 p-4 text-center">
-              <div className="text-xs font-bold text-muted-foreground uppercase">Total Bill Amount</div>
-              <div className="text-3xl font-black text-primary mt-1">{inr(pos.totals.total)}</div>
+              <div className="text-xs font-bold text-muted-foreground uppercase">
+                {curActiveOrder ? `Combined Bill Amount (Order #${curActiveOrder.number})` : "Total Bill Amount"}
+              </div>
+              <div className="text-3xl font-black text-primary mt-1">{inr(finalPayableTotal)}</div>
+              {curActiveOrder && (
+                <div className="text-[11px] text-muted-foreground mt-1 font-semibold">
+                  Includes previous dishes ({inr(curActiveOrder.total)}) + new dishes ({inr(pos.totals.total)})
+                </div>
+              )}
             </div>
 
             {/* Payment Method Selector (Cash vs UPI ONLY) */}

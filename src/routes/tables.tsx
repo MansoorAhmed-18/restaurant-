@@ -479,16 +479,30 @@ function Tables() {
                   )}
 
                   {t.status === "occupied" && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5">
                       {linkedOrder ? (
-                        <Link
-                          to="/invoice/$orderId"
-                          params={{ orderId: linkedOrder.id }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center gap-1 rounded-xl border border-primary/30 bg-primary/10 py-2 px-3 text-xs font-black text-primary hover:bg-primary hover:text-white transition-colors"
-                        >
-                          <Receipt className="size-3.5" /> Bill #{linkedOrder.number}
-                        </Link>
+                        <>
+                          <Link
+                            to="/invoice/$orderId"
+                            params={{ orderId: linkedOrder.id }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-1 flex items-center justify-center gap-1 rounded-xl border border-primary/30 bg-primary/10 py-2 px-2 text-[11px] font-black text-primary hover:bg-primary hover:text-white transition-colors truncate"
+                            title={`View Bill #${linkedOrder.number}`}
+                          >
+                            <Receipt className="size-3.5 shrink-0" /> #{linkedOrder.number}
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartOrder(t);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-primary py-2 px-2 text-[11px] font-black text-white hover:opacity-90 shadow-sm transition-all"
+                            title="Add food items to this table's running bill"
+                          >
+                            <Plus className="size-3.5 shrink-0" /> Add Items
+                          </button>
+                        </>
                       ) : (
                         <button
                           type="button"
@@ -496,9 +510,9 @@ function Tables() {
                             e.stopPropagation();
                             handleStartOrder(t);
                           }}
-                          className="flex items-center justify-center gap-1 rounded-xl bg-primary py-2 px-3 text-xs font-black text-white hover:opacity-90"
+                          className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-primary py-2 px-3 text-xs font-black text-white hover:opacity-90 shadow-sm"
                         >
-                          Add Items
+                          <Plus className="size-3.5" /> Start Bill
                         </button>
                       )}
                       <button
@@ -507,9 +521,10 @@ function Tables() {
                           e.stopPropagation();
                           handleFreeTable(t.id, t.name);
                         }}
-                        className="flex items-center justify-center gap-1 rounded-xl border bg-card py-2 px-3 text-xs font-extrabold text-muted-foreground hover:text-emerald-600 hover:border-emerald-500 transition-colors"
+                        title={`Vacate ${t.name}`}
+                        className="flex items-center justify-center rounded-xl border bg-card p-2 text-muted-foreground hover:text-emerald-600 hover:border-emerald-500 transition-colors shrink-0"
                       >
-                        <CheckCircle2 className="size-3.5 text-emerald-500" /> Vacate
+                        <CheckCircle2 className="size-3.5 text-emerald-500" />
                       </button>
                     </div>
                   )}
