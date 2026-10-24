@@ -50,6 +50,20 @@ export function Pos() {
     : null;
   const finalPayableTotal = curActiveOrder ? (curActiveOrder.total + pos.totals.total) : pos.totals.total;
 
+  // Safety: If POS opens for a new order and pos.tableId is occupied, auto-switch to first available table
+  useEffect(() => {
+    if (pos.tableId && !curActiveOrder && pos.cart.length === 0) {
+      const curT = pos.tables.find((t) => t.id === pos.tableId);
+      const isCurOccupied = curT?.status === "occupied" || pos.orders.some((o) => o.tableId === pos.tableId && o.paymentStatus === "unpaid" && o.status !== "cancelled");
+      if (isCurOccupied) {
+        const firstAvail = pos.tables.find((t) => 
+          t.status === "available" && !pos.orders.some((o) => o.tableId === t.id && o.paymentStatus === "unpaid" && o.status !== "cancelled")
+        );
+        pos.setTableId(firstAvail ? firstAvail.id : undefined);
+      }
+    }
+  }, [pos.tableId, curActiveOrder, pos.tables, pos.orders, pos.cart.length]);
+
   const handlePlaceOrder = (payNow: boolean) => {
     if (pos.cart.length === 0) return;
     if (payNow) {
@@ -225,9 +239,21 @@ export function Pos() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!pos.tableId && pos.tables.length > 0) {
-                    const firstAvail = pos.tables.find((t) => t.status === "available") || pos.tables[0];
-                    if (firstAvail) pos.setTableId(firstAvail.id);
+                  const availableTables = pos.tables.filter((t) => 
+                    t.status === "available" && !pos.orders.some((o) => o.tableId === t.id && o.paymentStatus === "unpaid" && o.status !== "cancelled")
+                  );
+                  if (!pos.tableId) {
+                    if (availableTables.length > 0) {
+                      pos.setTableId(availableTables[0].id);
+                    } else {
+                      toast.error("All tables are currently occupied! Please vacate a table first.");
+                    }
+                  } else {
+                    const curT = pos.tables.find((t) => t.id === pos.tableId);
+                    const isCurOccupied = curT?.status === "occupied" || pos.orders.some((o) => o.tableId === pos.tableId && o.paymentStatus === "unpaid" && o.status !== "cancelled");
+                    if (isCurOccupied && !curActiveOrder && availableTables.length > 0) {
+                      pos.setTableId(availableTables[0].id);
+                    }
                   }
                 }}
                 className={cn(
@@ -256,14 +282,40 @@ export function Pos() {
                     <span className="font-extrabold text-muted-foreground">Table:</span>
                     <select
                       value={pos.tableId}
-                      onChange={(e) => pos.setTableId(e.target.value)}
+                      onChange={(e) => {
+                        const targetId = e.target.value;
+                        const targetTable = pos.tables.find((t) => t.id === targetId);
+                        const isOccupied = targetTable?.status === "occupied" || pos.orders.some((o) => o.tableId === targetId && o.paymentStatus === "unpaid" && o.status !== "cancelled");
+                        if (isOccupied && (!curActiveOrder || curActiveOrder.tableId !== targetId)) {
+                          toast.error(`Table ${targetTable?.name || targetId} is already occupied! You cannot select an occupied table.`);
+                          return;
+                        }
+                        pos.setTableId(targetId);
+                      }}
                       className="font-bold text-foreground bg-card border rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary text-xs"
                     >
-                      {pos.tables.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.seats} seats){t.status !== "available" && t.id !== pos.tableId ? ` [${t.status}]` : ""}
-                        </option>
-                      ))}
+                      {pos.tables.map((t) => {
+                        const hasActiveOrder = pos.orders.some((o) => o.tableId === t.id && o.paymentStatus === "unpaid" && o.status !== "cancelled");
+                        const isOccupied = t.status === "occupied" || hasActiveOrder;
+                        const isReserved = t.status === "reserved";
+                        const isDisabled = isOccupied && (!curActiveOrder || curActiveOrder.tableId !== t.id);
+
+                        return (
+                          <option 
+                            key={t.id} 
+                            value={t.id} 
+                            disabled={isDisabled}
+                          >
+                            {isOccupied 
+                              ? (curActiveOrder && curActiveOrder.tableId === t.id 
+                                  ? `🪑 ${t.name} (${t.seats} seats) [Current Bill #${curActiveOrder.number}]` 
+                                  : `🚫 ${t.name} (${t.seats} seats) [OCCUPIED]`)
+                              : isReserved 
+                              ? `📅 ${t.name} (${t.seats} seats) [Reserved]` 
+                              : `🟢 ${t.name} (${t.seats} seats) - Available`}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
