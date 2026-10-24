@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { 
   Minus, Plus, Search, ShoppingCart, Trash2, Printer, 
   QrCode, Banknote, CheckCircle2, X, MessageSquare, Send 
