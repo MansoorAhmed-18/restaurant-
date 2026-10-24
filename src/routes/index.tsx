@@ -17,7 +17,7 @@ import { usePos } from "@/lib/pos-store";
 import { meta } from "@/lib/meta";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured, fetchTodayEarningsFromSupabase } from "@/lib/supabase";
-import { getActiveStaff, type StaffUser } from "@/lib/auth";
+import { getActiveStaff, isManager, type StaffUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Sales Dashboard", "Live today sales, yesterday comparison & weekly everyday sales chart."),
@@ -40,6 +40,7 @@ export function Dashboard() {
   const { orders, tables } = usePos();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [staff, setStaff] = useState<StaffUser>(() => getActiveStaff() || { name: "Staff", role: "Manager", username: "manager" });
+  const isUserMgr = isManager(staff);
   const [fabricUrl, setFabricUrl] = useState<string>(DEFAULT_FABRIC_URL);
   const [isEditingUrl, setIsEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -602,13 +603,22 @@ export function Dashboard() {
                   </div>
                   <div className="mt-2.5 flex items-center justify-between border-t pt-2">
                     <span className="font-extrabold text-foreground text-sm font-mono">{inr(o.total)}</span>
-                    <Link 
-                      to="/payments" 
-                      search={{ order: o.id }} 
-                      className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
-                    >
-                      Pay Bill
-                    </Link>
+                    {isUserMgr ? (
+                      <Link 
+                        to="/payments" 
+                        search={{ order: o.id }} 
+                        className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20"
+                      >
+                        Pay Bill
+                      </Link>
+                    ) : (
+                      <Link 
+                        to="/orders" 
+                        className="rounded-lg bg-muted px-2.5 py-1 text-xs font-bold text-foreground hover:bg-muted/80"
+                      >
+                        View Order
+                      </Link>
+                    )}
                   </div>
                 </div>
               ))}

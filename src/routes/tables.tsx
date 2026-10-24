@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { 
   Users, Plus, Search, Trash2, Edit3, CheckCircle2, Clock, 
   ArrowRight, Utensils, Receipt, Calendar, X, Sparkles, RefreshCw, 
-  Info, CreditCard, ChevronRight, Hash, Phone 
+  Info, CreditCard, ChevronRight, Hash, Phone, Lock 
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
@@ -15,6 +15,7 @@ import { cn, consolidateOrderItems } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import { inr } from "@/lib/api";
 import { syncTableToSupabase, syncAllTablesToSupabase, deleteTableFromSupabase } from "@/lib/supabase";
+import { isManager, getActiveStaff } from "@/lib/auth";
 
 export const Route = createFileRoute("/tables")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -34,6 +35,8 @@ function Tables() {
   const { tables, setTables, setTableId, orders } = usePos();
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const activeStaff = getActiveStaff();
+  const isUserMgr = isManager(activeStaff);
   const [filter, setFilter] = useState<TableStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -687,13 +690,20 @@ function Tables() {
                             <Plus className="size-4" /> Add Food Items
                           </button>
                           {activeOrder.paymentStatus === "unpaid" ? (
-                            <Link
-                              to="/payments"
-                              search={{ order: activeOrder.id }}
-                              className="flex items-center justify-center gap-1 rounded-xl border-2 border-primary bg-primary/10 text-xs font-black text-primary hover:bg-primary hover:text-white transition-colors"
-                            >
-                              <CreditCard className="size-4" /> Collect Bill
-                            </Link>
+                            isUserMgr ? (
+                              <Link
+                                to="/payments"
+                                search={{ order: activeOrder.id }}
+                                className="flex items-center justify-center gap-1 rounded-xl border-2 border-primary bg-primary/10 text-xs font-black text-primary hover:bg-primary hover:text-white transition-colors"
+                              >
+                                <CreditCard className="size-4" /> Collect Bill
+                              </Link>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-2 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                                <Lock className="size-3.5" />
+                                <span>Manager Settles Bill</span>
+                              </div>
+                            )
                           ) : (
                             <Link
                               to="/invoice/$orderId"

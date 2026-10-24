@@ -176,7 +176,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar p-4 shadow-sm">
       <div className="px-2 py-2"><Logo /></div>
       <nav className="mt-6 flex flex-1 flex-col gap-1.5">
-        {nav.map(({ to, label, icon: Icon }) => (
+        {nav
+          .filter((item) => item.to !== "/payments" || isManager)
+          .map(({ to, label, icon: Icon }) => (
           <Link 
             key={to} 
             to={to} 

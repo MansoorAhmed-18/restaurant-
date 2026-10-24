@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
 import type { PaymentMethod } from "@/lib/types";
 import { sendWhatsAppBill } from "@/lib/whatsapp";
+import { isManager, getActiveStaff } from "@/lib/auth";
 
 export const Route = createFileRoute("/pos")({
   head: () => meta("Billing POS Terminal", "Quick billing software for restaurant orders & thermal receipts."),
@@ -23,6 +24,8 @@ export const Route = createFileRoute("/pos")({
 export function Pos() {
   const pos = usePos();
   const nav = useNavigate();
+  const activeStaff = getActiveStaff();
+  const isUserMgr = isManager(activeStaff);
   const cats = useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
@@ -67,6 +70,10 @@ export function Pos() {
   const handlePlaceOrder = (payNow: boolean) => {
     if (pos.cart.length === 0) return;
     if (payNow) {
+      if (!isUserMgr) {
+        toast.error("Access restricted: Only Managers can collect payment.");
+        return;
+      }
       setPayModalOpen(true);
     } else {
       const hadExistingOrder = Boolean(curActiveOrder);
@@ -81,6 +88,10 @@ export function Pos() {
   };
 
   const handleCompletePayment = () => {
+    if (!isUserMgr) {
+      toast.error("Access restricted: Only Managers can collect payment.");
+      return;
+    }
     const o = pos.placeOrder(selectedMethod);
     if (!o) return;
     toast.success(`Bill #${o.number} paid via ${selectedMethod.toUpperCase()}!`);
@@ -408,19 +419,27 @@ export function Pos() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className={cn("grid gap-2 pt-1", isUserMgr ? "grid-cols-2" : "grid-cols-1")}>
                 <button 
                   onClick={() => handlePlaceOrder(false)} 
-                  className="h-11 rounded-xl border-2 border-primary text-xs font-extrabold text-primary hover:bg-primary/10 transition-colors"
+                  className={cn(
+                    "h-11 rounded-xl border-2 border-primary text-xs font-extrabold transition-colors flex items-center justify-center gap-1.5",
+                    isUserMgr 
+                      ? "text-primary hover:bg-primary/10" 
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md text-sm"
+                  )}
                 >
-                  {curActiveOrder ? `+ Add to Bill #${curActiveOrder.number}` : "Kitchen Ticket"}
+                  <span>🍳</span>
+                  <span>{curActiveOrder ? `+ Add to Bill #${curActiveOrder.number}` : "Kitchen Ticket"}</span>
                 </button>
-                <button 
-                  onClick={() => handlePlaceOrder(true)} 
-                  className="h-11 rounded-xl bg-gradient-to-r from-primary to-purple-800 text-xs font-black text-white shadow-[var(--shadow-lift)] hover:opacity-95 transition-all flex items-center justify-center gap-1.5 ring-1 ring-yellow-400/40"
-                >
-                  <span className="text-yellow-300">⚡</span> {curActiveOrder ? "Pay Full Bill 🧾" : "Pay & Print 🧾"}
-                </button>
+                {isUserMgr && (
+                  <button 
+                    onClick={() => handlePlaceOrder(true)} 
+                    className="h-11 rounded-xl bg-gradient-to-r from-primary to-purple-800 text-xs font-black text-white shadow-[var(--shadow-lift)] hover:opacity-95 transition-all flex items-center justify-center gap-1.5 ring-1 ring-yellow-400/40"
+                  >
+                    <span className="text-yellow-300">⚡</span> {curActiveOrder ? "Pay Full Bill 🧾" : "Pay & Print 🧾"}
+                  </button>
+                )}
               </div>
             </>
           )}

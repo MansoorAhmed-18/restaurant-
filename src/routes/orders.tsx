@@ -302,7 +302,11 @@ function Orders() {
                   </div>
                   <div className="grid gap-2">
                     {sel.status === "pending" && <button onClick={() => setOrderStatus(sel.id, "preparing")} className="h-10 rounded-xl bg-info text-sm font-bold text-primary-foreground">Mark preparing</button>}
-                    {sel.paymentStatus === "unpaid" && <Link to="/payments" search={{ order: sel.id }} className="grid h-10 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">Collect payment</Link>}
+                    {sel.paymentStatus === "unpaid" && isUserMgr && (
+                      <Link to="/payments" search={{ order: sel.id }} className="grid h-10 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow">
+                        Collect payment
+                      </Link>
+                    )}
                     {sel.paymentStatus === "paid" && (
                       <div className="space-y-2">
                         <Link to="/invoice/$orderId" params={{ orderId: sel.id }} className="grid h-10 place-items-center rounded-xl border-2 border-primary text-sm font-bold text-primary">

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Banknote, Loader2, QrCode } from "lucide-react";
+import { Banknote, Loader2, QrCode, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/pos/AppShell";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/pos/ui";
@@ -9,6 +9,7 @@ import { usePos } from "@/lib/pos-store";
 import type { PaymentMethod } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { meta } from "@/lib/meta";
+import { isManager, getActiveStaff } from "@/lib/auth";
 
 export const Route = createFileRoute("/payments")({
   validateSearch: (s: Record<string, unknown>) => ({ order: typeof s["order"] === "string" ? s["order"] : undefined }),
@@ -32,6 +33,9 @@ function Payments() {
   const { orders, payOrder } = usePos();
   const { order } = Route.useSearch();
   const nav = useNavigate();
+  const activeStaff = getActiveStaff();
+  const isUserMgr = isManager(activeStaff);
+
   const unpaid = orders.filter((o) => o.paymentStatus === "unpaid" && o.status !== "cancelled");
   const [selId, setSelId] = useState(order ?? unpaid[0]?.id);
   const [method, setMethod] = useState<PaymentMethod>("upi");
@@ -40,6 +44,10 @@ function Payments() {
 
   const confirm = () => {
     if (!sel) return;
+    if (!isUserMgr) {
+      toast.error("Access denied: Only Managers can collect payment.");
+      return;
+    }
     setBusy(true);
     setTimeout(() => { // simulated gateway confirmation
       payOrder(sel.id, method); setBusy(false);
@@ -47,6 +55,29 @@ function Payments() {
       nav({ to: "/invoice/$orderId", params: { orderId: sel.id } });
     }, 1200);
   };
+
+  if (!isUserMgr) {
+    return (
+      <AppShell>
+        <PageHeader title="Payments" subtitle="Manager Access Required" />
+        <div className="card-surface p-8 sm:p-12 text-center max-w-lg mx-auto space-y-4 my-8 border border-amber-500/30">
+          <div className="size-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto ring-8 ring-amber-500/5">
+            <Lock className="size-8" />
+          </div>
+          <h2 className="text-xl font-black text-foreground">Manager Access Only</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Only restaurant Managers are authorized to collect payments, process UPI QR transactions, and settle customer bills.
+          </p>
+          <button
+            onClick={() => nav({ to: "/pos" })}
+            className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow hover:opacity-90 transition-all"
+          >
+            Go to New Order
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   const methods = [{ id: "upi", label: "UPI / QR", icon: QrCode }, { id: "cash", label: "Cash", icon: Banknote }] as const;
 
