@@ -10,8 +10,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Meat Theory POS" />
+    <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#3C1361" />
     <meta name="description" content="Meat Theory POS — Tested, Crafted, Served. Next-generation Restaurant POS and Billing System." />
+    <script>
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        if (root && (!root.children || root.children.length === 0)) {
+          root.innerHTML = '<div style="font-family:sans-serif;padding:24px;text-align:center;color:#333;margin-top:60px;">' +
+            '<h2 style="color:#d9534f;margin-bottom:8px;">Unable to load Meat Theory POS</h2>' +
+            '<p style="font-size:14px;color:#666;margin-bottom:20px;">' + (e.message || 'An unexpected loading error occurred.') + '</p>' +
+            '<button onclick="localStorage.clear();sessionStorage.clear();window.location.reload(true);" style="background:#7c3aed;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:bold;cursor:pointer;">Clear Cache & Reload</button>' +
+            '</div>';
+        }
+      });
+    </script>
   </head>
   <body class="bg-background text-foreground antialiased font-sans">
     <div id="root"></div>
